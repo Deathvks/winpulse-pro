@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -56,7 +57,6 @@ namespace WinPulseOptimizer
         private long _lastLiveSampleOrder;
         private string? _lastNvidiaName;
         private string _detectedGpuSummary = "GPU";
-        private bool _compactMetricsExpanded;
         private readonly DispatcherTimer _liveMetricsTimer = new(DispatcherPriority.Background);
         private readonly DispatcherTimer _automationTimer = new(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(4.5) };
         private WinForms.NotifyIcon? _trayIcon;
@@ -216,21 +216,54 @@ namespace WinPulseOptimizer
 
         private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateDashboardLayout();
 
+        private bool? _userShowsMetrics;
+
         private void BtnToggleDashboard_Click(object sender, RoutedEventArgs e)
         {
-            _compactMetricsExpanded = !_compactMetricsExpanded;
+            bool currentlyVisible = DashboardMetrics.Visibility == Visibility.Visible;
+            _userShowsMetrics = !currentlyVisible;
             UpdateDashboardLayout();
+            if (_userShowsMetrics == true)
+                AnimateSlideFadeIn(DashboardMetrics, 0, -8, 180);
         }
 
         private void UpdateDashboardLayout()
         {
             if (DashboardMetrics == null) return;
             bool compact = ActualHeight < 760;
-            bool showMetrics = !compact || _compactMetricsExpanded;
+            bool showMetrics = _userShowsMetrics ?? !compact;
             DashboardMetrics.Visibility = showMetrics ? Visibility.Visible : Visibility.Collapsed;
-            BtnToggleDashboard.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
-            BtnToggleDashboard.Content = showMetrics ? "Ocultar lecturas" : "Ver lecturas";
+            BtnToggleDashboard.Visibility = Visibility.Visible;
+            BtnToggleDashboard.Content = showMetrics ? "Ocultar resumen" : "Ver resumen";
             UpdateLiveMetricsSchedule();
+        }
+
+        private static void AnimateSlideFadeIn(FrameworkElement element, double offsetX = 0, double offsetY = 12, int durationMs = 220)
+        {
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var duration = TimeSpan.FromMilliseconds(durationMs);
+
+            element.Opacity = 0;
+            var fade = new DoubleAnimation(0, 1, duration) { EasingFunction = ease };
+            element.BeginAnimation(OpacityProperty, fade);
+
+            if (offsetX == 0 && offsetY == 0) return;
+
+            if (element.RenderTransform is not TranslateTransform slide)
+            {
+                slide = new TranslateTransform();
+                element.RenderTransform = slide;
+            }
+            if (offsetX != 0)
+            {
+                slide.X = offsetX;
+                slide.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(offsetX, 0, duration) { EasingFunction = ease });
+            }
+            if (offsetY != 0)
+            {
+                slide.Y = offsetY;
+                slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(offsetY, 0, duration) { EasingFunction = ease });
+            }
         }
 
         private void HideToTray(bool showBalloon = true)
@@ -569,6 +602,7 @@ namespace WinPulseOptimizer
             bool open = ProfileGuidePanel.Visibility != Visibility.Visible;
             ProfileGuidePanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
             BtnToggleProfileGuide.Content = open ? "Ocultar detalle de perfiles" : "¿Qué cambia cada perfil?";
+            if (open) AnimateSlideFadeIn(ProfileGuidePanel, 0, 8, 190);
         }
 
         private void RenderPowerDiagnostics(PowerPlanDetails pd, bool powerRestricted, WindowsPowerPlanItem[]? plans = null)

@@ -28,6 +28,7 @@ public partial class MainWindow
     {
         ActivityLogPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         UpdateActivityLogLayout();
+        if (open) AnimateSlideFadeIn(ActivityLogPanel, 20, 0, 210);
         string action = open ? "Cerrar registro de actividad" : "Abrir registro de actividad";
         BtnToggleActivityLog.ToolTip = action;
         AutomationProperties.SetName(BtnToggleActivityLog, action);

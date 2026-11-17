@@ -22,7 +22,10 @@ namespace WinPulseOptimizer
 
         private async void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_loading && ReferenceEquals(e.Source, MainTabs) && ReferenceEquals(MainTabs.SelectedItem, TabNetwork))
+            if (!ReferenceEquals(e.Source, MainTabs)) return;
+            if (!_loading && MainTabs.SelectedItem is TabItem tab && tab.Content is FrameworkElement view)
+                AnimateSlideFadeIn(view, 0, 12, 220);
+            if (!_loading && ReferenceEquals(MainTabs.SelectedItem, TabNetwork))
                 await RefreshEthernetAdaptersAsync();
         }
 
