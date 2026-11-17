@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: winpulse-stable-release
   cancel-in-progress: false
 
 env:
-  DOWNLOAD_REPOSITORY: Deathvks/winpulse-releases
+  DOWNLOAD_REPOSITORY: Deathvks/winpulse-pro
 
 jobs:
   release:
@@ -59,9 +59,12 @@ jobs:
         if: steps.check.outputs.publish == 'true'
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
+          CURRENT_REPOSITORY: ${{ github.repository }}
         run: |
-          if (!$env:GH_TOKEN) { throw 'Falta el secreto RELEASES_TOKEN con permiso Contents: Read and write en el repositorio de descargas.' }
+          if ($env:DOWNLOAD_REPOSITORY -ne $env:CURRENT_REPOSITORY -and !$env:GH_TOKEN) {
+            throw 'Falta el secreto RELEASES_TOKEN con permiso Contents: Read and write en el repositorio de descargas.'
+          }
 
       - name: Instalar SDK de .NET 10
         if: steps.check.outputs.publish == 'true'
@@ -96,11 +99,11 @@ jobs:
         if: steps.check.outputs.publish == 'true'
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
           APP_VERSION: ${{ steps.version.outputs.app }}
         run: |
           $version = $env:APP_VERSION
           $asset = "bin/WinPulsePro-$version/WinPulseSetup.exe"
-          gh release create "v$version" $asset --repo $env:DOWNLOAD_REPOSITORY --latest `
+          gh release create "v$version" $asset --repo $env:DOWNLOAD_REPOSITORY --target $env:GITHUB_SHA --latest `
             --title "WinPulse Pro $version" --notes 'Descarga WinPulseSetup.exe para instalar o actualizar WinPulse Pro en Windows x64.'
           if ($LASTEXITCODE -ne 0) { throw 'GitHub no pudo publicar el instalador.' }

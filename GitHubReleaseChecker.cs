@@ -11,7 +11,7 @@ internal sealed record WinPulseRelease(Version Version, Uri Page);
 
 internal static class GitHubReleaseChecker
 {
-    internal const string Repository = "Deathvks/winpulse-releases";
+    internal const string Repository = "Deathvks/winpulse-pro";
     private static readonly Uri LatestEndpoint = new($"https://api.github.com/repos/{Repository}/releases/latest");
     private static readonly Uri ReleasesPage = new($"https://github.com/{Repository}/releases/");
 
