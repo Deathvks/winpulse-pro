@@ -1,0 +1,15 @@
+/bin/
+/obj/
+/.vs/
+/.codex/
+/.agents/
+*.user
+*.suo
+*.log
+*.pfx
+*.p12
+*.snk
+*.pem
+*.key
+.env
+.env.*

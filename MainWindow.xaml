@@ -1,0 +1,923 @@
+<Window x:Class="WinPulseOptimizer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WinPulse Pro" Icon="Assets/WinPulse.ico" ShowInTaskbar="True" Height="880" Width="1140" MinHeight="680" MinWidth="780"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize" UseLayoutRounding="True" SizeChanged="MainWindow_SizeChanged"
+        Background="{DynamicResource CanvasBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibility"/>
+    </Window.Resources>
+
+    <Grid x:Name="MainLayout" Margin="20,16" SizeChanged="MainLayout_SizeChanged">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition x:Name="ActivityLogGap" Width="0"/>
+            <ColumnDefinition x:Name="ActivityLogColumn" Width="0"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" MinHeight="105"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <DockPanel Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,16" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border x:Name="BadgePower" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="8" Padding="14,7" VerticalAlignment="Center" Margin="10,0,8,0">
+                    <TextBlock x:Name="TxtPowerState" Text="Conectado a la corriente" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
+                </Border>
+                <Button x:Name="BtnToggleDashboard" Content="Ver lecturas" Visibility="Collapsed" Margin="0,0,8,0"
+                        Style="{StaticResource SecondaryBtn}" Click="BtnToggleDashboard_Click"/>
+                <Button x:Name="BtnToggleActivityLog" Content="Registro" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"
+                        ToolTip="Abrir registro de actividad" AutomationProperties.Name="Abrir registro de actividad"
+                        Click="BtnToggleActivityLog_Click"/>
+                <Button Content="Salir" Style="{StaticResource DangerBtn}" Padding="12,7" ToolTip="Cerrar WinPulse Pro por completo. La X lo oculta junto al reloj." Click="BtnExitApp_Click"/>
+            </StackPanel>
+            <Image x:Name="ImgAppLogo" DockPanel.Dock="Left" Width="32" Height="32" VerticalAlignment="Top" Margin="0,1,12,0"/>
+            <StackPanel>
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="WinPulse Pro" FontSize="27" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="7" Padding="10,3" Margin="10,2,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtOsBadge" Text="Windows 11" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+                </WrapPanel>
+                <TextBlock x:Name="TxtHardware" Text="Detectando equipo..." FontSize="12" Foreground="{DynamicResource QuietBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Tarjetas de estado -->
+        <UniformGrid x:Name="DashboardMetrics" Grid.Row="1" Grid.ColumnSpan="3" Columns="3" Margin="0,0,0,12">
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="13" Margin="0,0,6,0">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,5">
+                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" VerticalAlignment="Center" Fill="{DynamicResource SuccessBrush}" Margin="0,0,7,0"/>
+                        <TextBlock Text="Ahora mismo" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                    </DockPanel>
+                    <TextBlock x:Name="TxtLiveCpu" Text="CPU: -- %" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TxtLiveRam" Text="RAM: -- / -- GB" FontSize="13" Foreground="{DynamicResource TextBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TxtLiveGpu" Text="GPU" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TxtLiveGpuStats" Text="Consultando…" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TxtLiveProcs" Text="Procesos en vivo: --" FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,2,0,0" TextWrapping="Wrap"
+                               ToolTip="Incluye los procesos de Windows y de las aplicaciones. El recuento cambia con la actividad del equipo."/>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="13" Margin="3,0,3,0">
+                <StackPanel>
+                    <TextBlock Text="Medición de referencia" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,5"/>
+                    <TextBlock x:Name="TxtBeforeMain" Text="Sin capturar" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TxtBeforeSub" Text="Se mide al abrir y antes de cambiar de perfil" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                    <Button Content="Guardar foto" Style="{StaticResource LinkBtn}" Click="BtnCaptureBefore_Click"
+                            HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="13" Margin="6,0,0,0">
+                <StackPanel>
+                    <TextBlock x:Name="TxtAfterTitle" Text="Estado al abrir" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,5"/>
+                    <TextBlock x:Name="TxtAfterMain" Text="Leyendo el plan activo…" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TxtAfterSub" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button x:Name="BtnLatestProfileReport" Content="Ver ajustes del último perfil"
+                                Style="{StaticResource LinkBtn}" Margin="0,0,6,4"
+                                IsEnabled="False" Click="BtnShowProfileReport_Click"/>
+                        <Button Content="Estado de los ajustes" Style="{StaticResource LinkBtn}" Margin="0,0,0,4"
+                                Click="BtnShowSettingStatus_Click"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Selector de Planes -->
+        <Border Grid.Row="2" Grid.ColumnSpan="3" x:Name="CardProfiles" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="13" Margin="0,0,0,12">
+            <DockPanel LastChildFill="True">
+                <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <Button x:Name="BtnProfileJugar" Content="Jugar (Máximo)" Style="{StaticResource ProfileBtn}" Click="BtnJugar_Click" Margin="0,2,6,2"/>
+                    <Button x:Name="BtnProfileEstudiar" Content="Estudiar / Trabajar" Style="{StaticResource ProfileBtn}" Click="BtnEstudiar_Click" Margin="0,2,6,2"/>
+                    <Button x:Name="BtnProfileChill" Content="Estar Chill" Style="{StaticResource ProfileBtn}" Click="BtnChill_Click" Margin="0,2,6,2"/>
+                    <Button x:Name="BtnProfileFabrica" Style="{StaticResource ProfileBtn}" Click="BtnReset_Click" Margin="0,2,0,2"
+                            AutomationProperties.Name="De fábrica">
+                        <ContentControl Style="{StaticResource IconLabel}" Content="De fábrica" Tag="{StaticResource HistoryGlyph}"/>
+                    </Button>
+                </WrapPanel>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                    <DockPanel>
+                        <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,5,8,0" VerticalAlignment="Top"/>
+                        <TextBlock DockPanel.Dock="Left" Text="PLAN ACTIVO:" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource QuietBrush}" Margin="0,2,5,0" VerticalAlignment="Top"/>
+                        <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                    </DockPanel>
+                    <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Pestañas -->
+        <TabControl x:Name="MainTabs" Grid.Row="3" Style="{StaticResource NavigationTabs}" SelectionChanged="MainTabs_SelectionChanged">
+            <!-- PESTAÑA 0: PERFILES Y OPCIONES DE ENERGÍA -->
+            <TabItem Header="Energía y perfiles" Tag="{StaticResource PowerGlyph}" Style="{StaticResource NavigationTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Automatización Inteligente (Cero Intervención) -->
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="15" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock x:Name="TxtAutoStatus" DockPanel.Dock="Right" Text="Vigilante activo" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="AUTOMATIZACIÓN DE PERFILES" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <Button x:Name="BtnApproveAutomation" Visibility="Collapsed" HorizontalAlignment="Left" Margin="0,0,0,8"
+                                        Style="{StaticResource PrimaryBtn}" Click="BtnApproveAutomation_Click"/>
+
+                                <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11,9" Margin="0,0,0,8">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwAutoGame" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="AutoSwitch_Changed" Unchecked="AutoSwitch_Changed" Margin="12,0,0,0"
+                                                  AutomationProperties.Name="Cambio automático al detectar juegos"/>
+                                        <StackPanel>
+                                            <ContentControl Content="Cambio automático al detectar juegos" Tag="{StaticResource GameGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Detecta el perfil asignado al juego. WinPulse te avisa cuando hace falta autorizar la aplicación o la vuelta al perfil anterior." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="23,2,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="BatteryAutomationOptions" Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11,9" Margin="0,0,0,8">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwAutoBattery" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="AutoSwitch_Changed" Unchecked="AutoSwitch_Changed" Margin="12,0,0,0"
+                                                  AutomationProperties.Name="Activar Estar Chill al desconectar el cargador"/>
+                                        <StackPanel>
+                                            <ContentControl Content="Cambio automático a 'Estar Chill' al desconectar el cargador" Tag="{StaticResource BatteryGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Activa Chill en batería. Al reconectar el cargador recupera el perfil anterior; si hay un juego abierto, se aplica la regla de juegos." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="23,2,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="BatteryGameOptions" Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11,9" Margin="0,0,0,8">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwGameOnBattery" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="AutoSwitch_Changed" Unchecked="AutoSwitch_Changed" Margin="12,0,0,0"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Permitir perfiles de juego automáticamente en batería" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Si lo activas, el perfil del juego tiene prioridad sobre Chill mientras juegas." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Expander Header="Reglas de detección por ejecutable" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,8">
+                                    <StackPanel Margin="0,8,0,0">
+                                        <TextBlock Text="Escribe un ejecutable por línea, por ejemplo juego.exe. Las exclusiones tienen prioridad." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                        <UniformGrid Columns="2">
+                                            <StackPanel Margin="0,0,8,0">
+                                                <Label Content="Incluir ejecutables" Target="{Binding ElementName=TxtIncludedGames}" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBox x:Name="TxtIncludedGames" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Height="76" Padding="6"/>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <Label Content="Excluir ejecutables" Target="{Binding ElementName=TxtExcludedGames}" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBox x:Name="TxtExcludedGames" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Height="76" Padding="6"/>
+                                            </StackPanel>
+                                        </UniformGrid>
+                                        <DockPanel Margin="0,8,0,0">
+                                            <Button Content="Guardar reglas" DockPanel.Dock="Left" Style="{StaticResource SecondaryBtn}" Click="BtnSaveGameRules_Click" Margin="0,0,10,0"/>
+                                            <TextBlock x:Name="TxtGameRulesStatus" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                                        </DockPanel>
+                                    </StackPanel>
+                                </Expander>
+
+                                <Border x:Name="RowGameProfiles" Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11,9" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="Perfiles por juego" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Guarda un plan de energía y tus ajustes por ejecutable. La detección de juegos debe estar activada. Las exclusiones tienen prioridad."
+                                                   FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                                        <DockPanel>
+                                            <WrapPanel DockPanel.Dock="Right" Margin="8,0,0,0">
+                                                <Button Content="Nuevo" Style="{StaticResource SecondaryBtn}" Click="BtnNewGameProfile_Click" Margin="0,0,6,0"/>
+                                                <Button x:Name="BtnEditGameProfile" Content="Editar" Style="{StaticResource SecondaryBtn}" Click="BtnEditGameProfile_Click" IsEnabled="False" Margin="0,0,6,0"/>
+                                                <Button x:Name="BtnDeleteGameProfile" Content="Eliminar" Style="{StaticResource SecondaryBtn}" Click="BtnDeleteGameProfile_Click" IsEnabled="False"/>
+                                            </WrapPanel>
+                                            <ComboBox x:Name="CmbGameProfiles" DisplayMemberPath="Name" MinHeight="28"
+                                                      AutomationProperties.Name="Perfiles guardados" SelectionChanged="CmbGameProfiles_SelectionChanged"/>
+                                        </DockPanel>
+                                        <TextBlock x:Name="TxtGameProfileExecutables" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                        <WrapPanel Margin="0,8,0,4">
+                                            <Button x:Name="BtnExportGameProfiles" Content="Exportar perfiles…" Style="{StaticResource SecondaryBtn}"
+                                                    Click="BtnExportGameProfiles_Click" IsEnabled="False" Margin="0,0,6,4"/>
+                                            <Button x:Name="BtnImportGameProfiles" Content="Importar perfiles…" Style="{StaticResource SecondaryBtn}"
+                                                    Click="BtnImportGameProfiles_Click" Margin="0,0,0,4"/>
+                                        </WrapPanel>
+                                        <TextBlock x:Name="TxtGameProfilesStatus" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11,9">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwStartWithWindows" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="StartWithWindows_Changed" Unchecked="StartWithWindows_Changed" Margin="12,0,0,0"
+                                                  AutomationProperties.Name="Iniciar minimizado con Windows"/>
+                                        <StackPanel>
+                                            <ContentControl Content="Iniciar minimizado junto al reloj al encender Windows" Tag="{StaticResource StartGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Arranca en segundo plano al iniciar sesión y mantiene activo el vigilante de juegos. Los cambios protegidos se autorizan desde WinPulse." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="23,2,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Resumen de los perfiles de Windows -->
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="15" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="QUÉ CAMBIA CADA PERFIL EN WINDOWS" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,10"/>
+
+                                <UniformGrid Columns="3">
+                                    <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11" Margin="0,0,5,0">
+                                        <StackPanel>
+                                            <ContentControl Content="Jugar (Máximo)" Tag="{StaticResource GameGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Prioriza el rendimiento y solicita turbo agresivo con corriente. Activa el Modo Juego y pausa el indexado y la telemetría cuando Windows permite esos cambios." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11" Margin="2.5,0,2.5,0">
+                                        <StackPanel>
+                                            <ContentControl Content="Estudiar / Trabajar" Tag="{StaticResource StudyGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Solicita un rango de CPU de 5 a 100 % con corriente y reanuda los servicios que WinPulse haya pausado." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="11" Margin="5,0,0,0">
+                                        <StackPanel>
+                                            <ContentControl Content="Estar Chill" Tag="{StaticResource QuietGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Prioriza el ahorro y solicita un máximo de CPU del 80 % con corriente y del 70 % en batería, si el equipo admite esos ajustes." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Todas las ramas de Opciones Avanzadas de Energía -->
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="15" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <Button DockPanel.Dock="Right" Content="Actualizar datos" Style="{StaticResource SecondaryBtn}" Padding="12,5" FontSize="11" Click="BtnRefreshPower_Click"/>
+                                    <TextBlock Text="CONFIGURACIÓN AVANZADA DEL PLAN DE ENERGÍA ACTUAL" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource QuietBrush}" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <TextBlock x:Name="TxtDetailPlanHeader" Text="Estado real activo: --" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,4" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="TxtDetailGpu" Text="Gráficas detectadas: --" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="1. Disco duro (Apagar disco tras)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrDisk" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="2. Configuración del fondo de escritorio" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrBg" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="3. Suspender el equipo tras" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrSleep" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7">
+                                            <StackPanel>
+                                                <TextBlock Text="4. PCI Express (Ahorro de energía)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrPcie" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="5. Administración de energía del procesador" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrProc" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                                <TextBlock Text="Modo turbo del procesador" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" Margin="0,6,0,0"/>
+                                                <TextBlock x:Name="TxtPwrBoost" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="6. Pantalla (Apagar pantalla tras)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrDisplay" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border x:Name="BatteryPowerDetails" Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="Batería (niveles de aviso)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrBattery" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="10,7">
+                                            <StackPanel>
+                                                <TextBlock Text="Modo de energía de Windows" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock x:Name="TxtPwrOverlay" Text="--" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Herramientas Rápidas -->
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="15">
+                            <StackPanel>
+                                <TextBlock Text="Herramientas Rápidas" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,10"/>
+
+                                <Border x:Name="RowMaintenance" Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12" Margin="0,0,0,8">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Limpiar y Liberar RAM" Style="{StaticResource PrimaryBtn}" Click="BtnMaintenance_Click" VerticalAlignment="Center"/>
+                                        <StackPanel Margin="0,0,10,0">
+                                            <TextBlock Text="Limpieza Completa (Basura, Caché Gráfica y Memoria RAM)" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Borra temporales, ajusta la RAM residente sin cerrar programas y optimiza el disco SSD." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="RowBackup" Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Guardar Copia Seguridad" Style="{StaticResource SecondaryBtn}" Click="BtnBackup_Click" VerticalAlignment="Center"/>
+                                        <StackPanel Margin="0,0,10,0">
+                                            <TextBlock Text="Punto de Restauración de Windows" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                            <TextBlock Text="Habilita Protección del sistema en la unidad de Windows y comprueba que se creó el punto de restauración." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- PESTAÑA 1 -->
+            <TabItem Header="FPS, GPU y CPU" Tag="{StaticResource DisplayGlyph}" Style="{StaticResource NavigationTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16">
+                        <StackPanel>
+                            <Border x:Name="RowSwGameMode" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwGameMode" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Modo Juego de Windows (Reparto inteligente de núcleos)" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Dedica los núcleos más potentes de tu procesador al juego y deja las tareas secundarias en los núcleos de ahorro." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwHags" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwHags" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Aceleración Gráfica por Hardware (HAGS)" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Delega parte de la programación de la GPU al hardware cuando el controlador lo admite." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwWindowedOpt" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwWindowedOpt" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Optimización para Juegos en Ventana sin Bordes" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Elimina el retardo de imagen cuando juegas en modo ventana sin bordes en lugar de pantalla completa." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwHighResTimer" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwHighResTimer" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Temporizador de Alta Precisión (FPS más estables)" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Evita tirones repentinos haciendo que Windows responda cada 0,5 milisegundos en juegos." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwCoreParking" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwCoreParking" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Mantener todos los núcleos despiertos (Solo enchufado)" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Evita micro-tirones al despertar núcleos dormidos cuando juegas con el cargador puesto." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwMmcss" CornerRadius="7" Padding="8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwMmcss" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Prioridad Alta para Gráfica y Procesador en Juegos" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Da preferencia al juego frente a otros programas abiertos mientras estás jugando." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- PESTAÑA 2 -->
+            <TabItem Header="Procesos y RAM" Tag="{StaticResource TasksGlyph}" Style="{StaticResource NavigationTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16">
+                        <StackPanel>
+                            <Border x:Name="RowSwSuspendServices" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwSuspendServices" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Pausar Servicios Pesados de Windows mientras juegas" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Pausa temporalmente los servicios compatibles. Al salir de Jugar, WinPulse intenta reanudar los servicios que haya pausado." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwForegroundPrio" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwForegroundPrio" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Dar más potencia a la ventana que estás usando" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Prioriza el programa en pantalla frente a los que tienes minimizados." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwGameDvr" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwGameDvr" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Apagar Grabación Oculta de Pantalla (Game DVR)" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Evita que Windows esté grabando vídeo en segundo plano gastando memoria de la gráfica." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Border x:Name="RowSwBgApps" CornerRadius="7" Padding="8" Margin="0,0,0,10">
+                                <DockPanel>
+                                    <CheckBox x:Name="SwBgApps" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Bloquear Apps de Windows en Segundo Plano" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Impide que aplicaciones que no estás usando consuman memoria RAM." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Separator Background="{DynamicResource RaisedBrush}" Margin="0,0,0,12"/>
+
+                            <Expander Header="Optimización adaptativa" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12">
+                                <StackPanel Margin="0,8,0,0">
+                                    <CheckBox x:Name="SwAdaptiveMemory" Content="Ajustar automáticamente cuando falte memoria"
+                                              Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" Click="SwAdaptiveMemory_Click"/>
+                                    <TextBlock Text="Funciona con cualquier perfil. Si la RAM sigue baja, WinPulse puede ajustar la memoria de una app minimizada e inactiva. La app sigue abierta y puede tardar más en responder al restaurarla."
+                                               Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                    <TextBlock x:Name="TxtAdaptiveMemoryStatus" Text="Desactivado" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedBrush}" AutomationProperties.LiveSetting="Polite"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <StackPanel x:Name="ProcessUsageSection" Margin="0,0,0,14">
+                                <DockPanel Margin="0,0,0,6">
+                                    <Button x:Name="BtnMeasureProcesses" DockPanel.Dock="Right" Content="Medir 6 s"
+                                            Style="{StaticResource PrimaryBtn}" Click="BtnMeasureProcesses_Click" Margin="10,0,0,0"/>
+                                    <TextBlock Text="¿Qué está consumiendo recursos?" FontSize="14" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                </DockPanel>
+                                <TextBlock x:Name="TxtProcessMeasurement" Text="Mide qué apps usan recursos mientras juegas o trabajas."
+                                           Margin="0,0,0,8" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
+                                           AutomationProperties.LiveSetting="Polite"/>
+                                <DataGrid x:Name="GridProcessUsage" Visibility="Collapsed" IsReadOnly="True"
+                                          AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False"
+                                          MaxHeight="265" Margin="0,0,0,5" BorderBrush="{DynamicResource StrokeBrush}"
+                                          Background="{DynamicResource PanelBrush}" RowBackground="{DynamicResource PanelBrush}"
+                                          AlternatingRowBackground="{DynamicResource RaisedBrush}" Foreground="{DynamicResource TextBrush}"
+                                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource StrokeBrush}">
+                                    <DataGrid.ColumnHeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="Background" Value="{DynamicResource RaisedBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.ColumnHeaderStyle>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Proceso" Binding="{Binding Name}" Width="2*"/>
+                                        <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="Auto"/>
+                                        <DataGridTextColumn Header="CPU media" Binding="{Binding CpuPercent, StringFormat={}{0:0.00} %, TargetNullValue=—}" Width="*"/>
+                                        <DataGridTextColumn Header="RAM al final" Binding="{Binding RamMb, StringFormat={}{0:0} MiB}" Width="*"/>
+                                        <DataGridTextColumn Header="E/S media" Binding="{Binding IoMbPerSecond, StringFormat={}{0:0.00} MiB/s, TargetNullValue=—}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <StackPanel>
+                                    <TextBlock Text="La E/S incluye archivos, red y dispositivos. Para ver solo el disco, abre la pestaña Disco del monitor de Windows."
+                                               Foreground="{DynamicResource QuietBrush}" FontSize="11.5" TextWrapping="Wrap"/>
+                                    <Button Content="Abrir Monitor de recursos" Style="{StaticResource SecondaryBtn}"
+                                            Click="BtnOpenResourceMonitor_Click" HorizontalAlignment="Left" Margin="0,6,0,0" Padding="10,5"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Separator Background="{DynamicResource RaisedBrush}" Margin="0,0,0,12"/>
+
+                            <DockPanel Margin="0,0,0,8">
+                                <WrapPanel DockPanel.Dock="Right">
+                                    <Button Content="Liberar RAM Ahora" Style="{StaticResource PrimaryBtn}" Padding="12,6" FontSize="11.5" Click="BtnPurgeRam_Click" Margin="0,0,6,0"/>
+                                    <Button Content="Actualizar" Style="{StaticResource SecondaryBtn}" Padding="12,6" FontSize="11.5" Click="BtnRefreshProcs_Click"/>
+                                </WrapPanel>
+                                <TextBlock Text="Programas que más memoria RAM están gastando ahora" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                            </DockPanel>
+
+                            <ItemsControl x:Name="LstTopProcesses">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12,7" Margin="0,0,0,5">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Content="Cerrar" Style="{StaticResource DangerBtn}" Tag="{Binding Pid}" Click="BtnKillProc_Click"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding RamMb, StringFormat={}{0:0.0} MB}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5"/>
+                                                    <TextBlock Text="{Binding Pid, StringFormat=' (ID {0})'}" Foreground="{DynamicResource QuietBrush}" FontSize="11.5"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Separator Background="{DynamicResource RaisedBrush}" Margin="0,12,0,12"/>
+
+                            <DockPanel Margin="0,0,0,8">
+                                <Button DockPanel.Dock="Right" Content="Actualizar Inicio" Style="{StaticResource SecondaryBtn}" Padding="12,6" FontSize="11.5" Click="BtnRefreshStartup_Click"/>
+                                <StackPanel>
+                                    <TextBlock Text="Programas que se abren solos al encender Windows (Inicio)" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                    <TextBlock Text="Desactiva los que no necesites para que el portátil arranque más rápido y con más RAM libre." FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+                                </StackPanel>
+                            </DockPanel>
+
+                            <ItemsControl x:Name="LstStartupApps">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12,8" Margin="0,0,0,5">
+                                            <DockPanel>
+                                                <CheckBox DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding IsEnabled, Mode=OneWay}" Tag="{Binding}" Click="StartupToggle_Click" Margin="10,0,0,0"/>
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}"/>
+                                                        <TextBlock Text="{Binding Scope, StringFormat='  [{0}]'}" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Command}" FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- PESTAÑA 3 -->
+            <TabItem x:Name="TabNetwork" Header="Red y ratón" Tag="{StaticResource NetworkGlyph}" Style="{StaticResource NavigationTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <Border x:Name="RowSwNagle" CornerRadius="7" Padding="8" Margin="0,0,0,8">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwNagle" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Ajuste de latencia TCP" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Ajusta los parámetros de Nagle y las confirmaciones TCP. Puedes medir el resultado abajo." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="RowSwUsbPcie" CornerRadius="7" Padding="8">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwUsbPcie" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="12,0,0,0"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Evitar Cortes de Energía en USB y Gráfica (Enchufado)" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Impide que Windows ponga en reposo los puertos USB del ratón/teclado o reduzca energía a la gráfica." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="RowEthernet" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="LATENCIA EN ETHERNET" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="Prueba un ajuste a la vez. Al cambiarlo, el adaptador puede desconectarse unos segundos." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,6"/>
+                                <Label Content="Adaptador Ethernet" Target="{Binding ElementName=CmbEthernetAdapter}" Foreground="{DynamicResource TextBrush}"/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <Button x:Name="BtnRefreshEthernet" DockPanel.Dock="Right" Content="Detectar" Style="{StaticResource SecondaryBtn}" Click="BtnRefreshEthernet_Click" Margin="8,0,0,0"/>
+                                    <ComboBox x:Name="CmbEthernetAdapter" DisplayMemberPath="Label" MinHeight="28" SelectionChanged="CmbEthernetAdapter_SelectionChanged"/>
+                                </DockPanel>
+                                <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12,8" Margin="0,0,0,6">
+                                    <DockPanel>
+                                        <Button x:Name="BtnEthernetModeration" DockPanel.Dock="Right" Content="Desactivar" IsEnabled="False" Style="{StaticResource SecondaryBtn}" Click="BtnEthernetOption_Click" VerticalAlignment="Center" Margin="8,0,0,0" AutomationProperties.Name="Cambiar moderación de interrupciones"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Moderación de interrupciones" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock x:Name="TxtEthernetModeration" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                                <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12,8" Margin="0,0,0,6">
+                                    <DockPanel>
+                                        <Button x:Name="BtnEthernetEee" DockPanel.Dock="Right" Content="Desactivar" IsEnabled="False" Style="{StaticResource SecondaryBtn}" Click="BtnEthernetOption_Click" VerticalAlignment="Center" Margin="8,0,0,0" AutomationProperties.Name="Cambiar Ethernet de bajo consumo"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Ethernet de bajo consumo (EEE)" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock x:Name="TxtEthernetEee" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                                <TextBlock x:Name="TxtEthernetStatus" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="RowPingTest" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="LATENCIA Y ESTABILIDAD DE RED" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="Mide tu puerta de enlace y dos destinos públicos. Guarda una referencia y vuelve a medir después de cambiar un ajuste o perfil." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,6"/>
+                                <Label Content="Servidor o dirección IP adicional (opcional)" Target="{Binding ElementName=TxtPingTarget}" Foreground="{DynamicResource TextBrush}"/>
+                                <TextBox x:Name="TxtPingTarget" MaxLength="253" Padding="6" Margin="0,0,0,10"/>
+
+                                <WrapPanel Margin="0,0,0,6">
+                                    <Button x:Name="BtnPingTest" Content="Medir ping" Style="{StaticResource PrimaryBtn}" Padding="14,7" FontSize="12" Click="BtnPingTest_Click" Margin="0,0,8,4"/>
+                                    <Button x:Name="BtnSavePingReference" Content="Guardar como referencia" Style="{StaticResource SecondaryBtn}" Click="BtnSavePingReference_Click" IsEnabled="False" Margin="0,0,0,4"/>
+                                </WrapPanel>
+                                <TextBlock x:Name="TxtPingStatus" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+
+                                <ItemsControl x:Name="LstPingResults">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12,8" Margin="0,0,0,6">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Endpoint}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Summary}" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Comparison}" FontSize="12" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,0" TextWrapping="Wrap">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Comparison}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Algunos equipos filtran ICMP. Un destino sin respuesta puede seguir accesible por otros protocolos." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="RowLoadedPing" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16">
+                            <StackPanel>
+                                <TextBlock Text="PING BAJO CARGA" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="Compara el router y un mismo destino externo con la conexión libre, durante una descarga y durante una subida. Usa el servidor opcional de arriba o Cloudflare (1.1.1.1 para IPv4)."
+                                           FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,4"/>
+                                <TextBlock Text="La prueba genera hasta 100 MB por sentido con Cloudflare. El p95 muestra el tiempo dentro del cual llegó el 95 % de las respuestas."
+                                           FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <WrapPanel Margin="0,0,0,4">
+                                    <Button x:Name="BtnLoadedPing" Content="Medir bajo carga" Style="{StaticResource PrimaryBtn}" Click="BtnLoadedPing_Click" Margin="0,0,8,4"/>
+                                    <Button x:Name="BtnCancelLoadedPing" Content="Cancelar" Style="{StaticResource SecondaryBtn}" Click="BtnCancelLoadedPing_Click" IsEnabled="False" Margin="0,0,0,4"/>
+                                </WrapPanel>
+                                <TextBlock x:Name="TxtLoadedPingStatus" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
+                                           Margin="0,0,0,6" AutomationProperties.LiveSetting="Polite"/>
+                                <ItemsControl x:Name="LstLoadedPing">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12,9" Margin="0,0,0,6">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock Text="{Binding Transfer}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Results}" FontSize="13" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- PESTAÑA 4 -->
+            <TabItem Header="Historial" Tag="{StaticResource HistoryGlyph}" Style="{StaticResource NavigationTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <TextBlock x:Name="TxtBaselineDate" DockPanel.Dock="Right" Text="Guardado: --" FontSize="11.5" Foreground="{DynamicResource QuietBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="RESUMEN DE LA PRIMERA CAPTURA" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <StackPanel>
+                                    <TextBlock x:Name="TxtOrigLine1" Text="Cargando..." FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtOrigLine2" Text="" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtOrigLine3" Text="" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtOrigLine4" Text="" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtOrigLine5" Text="" FontSize="12.5" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <WrapPanel Margin="0,12,0,4">
+                                    <Button x:Name="BtnUndoChange" Content="Deshacer último cambio" Style="{StaticResource SecondaryBtn}" Click="BtnUndoChange_Click" Margin="0,0,8,4"/>
+                                    <Button x:Name="BtnRestoreOriginal" Content="Restaurar mi configuración original" Style="{StaticResource SecondaryBtn}" Click="BtnRestoreOriginal_Click" Margin="0,0,0,4"/>
+                                    <Button Content="Estado de los ajustes" Style="{StaticResource SecondaryBtn}" Click="BtnShowSettingStatus_Click" Margin="8,0,0,4"/>
+                                </WrapPanel>
+                                <TextBlock x:Name="TxtRestoreStatus" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <Button DockPanel.Dock="Right" Content="Borrar Lista" Style="{StaticResource SecondaryBtn}" Padding="12,5" FontSize="11" Click="BtnClearHistory_Click"/>
+                                    <TextBlock Text="TODO LO QUE HAS HECHO (PULSA EL ENLACE PARA IR AL AJUSTE)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <ItemsControl x:Name="LstHistory">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource RaisedBrush}" CornerRadius="7" Padding="12,10" Margin="0,0,0,8">
+                                                <StackPanel>
+                                                    <DockPanel>
+                                                        <Button DockPanel.Dock="Right" Content="Ir a ese apartado →" Style="{StaticResource LinkBtn}" Tag="{Binding}" Click="BtnGoToSection_Click" Margin="10,0,0,0"/>
+                                                        <StackPanel>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding Action}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                                                <TextBlock Text="{Binding Timestamp, StringFormat='  •  {0}'}" FontSize="11" Foreground="{DynamicResource QuietBrush}" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                            <TextBlock Text="{Binding SectionName}" FontSize="11" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+                                                    </DockPanel>
+                                                    <TextBlock Text="{Binding Explanation}" FontSize="12" Foreground="{DynamicResource TextBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding ResultDelta}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" FontWeight="SemiBold" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                                    <Button Content="Ver ajustes de este perfil" Style="{StaticResource LinkBtn}" HorizontalAlignment="Left"
+                                                            Tag="{Binding}" Click="BtnShowProfileReport_Click" Margin="0,5,0,0"
+                                                            Visibility="{Binding HasProfileSettings, Converter={StaticResource BooleanToVisibility}}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem x:Name="TabBenchmarks" Header="Pruebas A/B" Tag="{StaticResource CompareGlyph}" Style="{StaticResource NavigationTab}">
+                <TabItem.Resources>
+                    <Style x:Key="BenchmarkHeader" TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="{DynamicResource RaisedBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                        <Setter Property="Padding" Value="9,7"/>
+                    </Style>
+                    <Style x:Key="BenchmarkTable" TargetType="DataGrid">
+                        <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+                        <Setter Property="RowBackground" Value="{DynamicResource PanelBrush}"/>
+                        <Setter Property="AlternatingRowBackground" Value="{DynamicResource RaisedBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                        <Setter Property="ColumnHeaderStyle" Value="{StaticResource BenchmarkHeader}"/>
+                        <Setter Property="GridLinesVisibility" Value="None"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="RowHeight" Value="27"/>
+                    </Style>
+                </TabItem.Resources>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button x:Name="BtnCancelBenchmark" DockPanel.Dock="Right" Content="Cancelar medición" Style="{StaticResource SecondaryBtn}" Click="BtnCancelBenchmark_Click" IsEnabled="False"/>
+                            <StackPanel>
+                                <CheckBox x:Name="SwPauseAutomationForTests" Content="Pausar los cambios automáticos de perfil" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" Checked="BenchmarkPause_Changed" Unchecked="BenchmarkPause_Changed"/>
+                                <TextBlock x:Name="TxtBenchmarkStatus" Text="Mide A, cambia de perfil y repite la misma sesión para medir B." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <StackPanel x:Name="BenchmarkInputs">
+                            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Comparación guiada por juego" FontSize="17" FontWeight="SemiBold"/>
+                                    <Label Content="Comparaciones guardadas" Target="{Binding ElementName=CmbSavedGameComparisons}"
+                                           Foreground="{DynamicResource TextBrush}" Margin="0,4,0,0"/>
+                                    <DockPanel Margin="0,0,0,10">
+                                        <Button x:Name="BtnNewGameComparison" DockPanel.Dock="Right" Content="Nueva comparación"
+                                                Style="{StaticResource SecondaryBtn}" Click="BtnNewGameComparison_Click" Margin="8,0,0,0"/>
+                                        <ComboBox x:Name="CmbSavedGameComparisons" DisplayMemberPath="Label" SelectionChanged="SavedGameComparison_Changed"/>
+                                    </DockPanel>
+                                    <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="7" Padding="10,8" Margin="0,0,0,8">
+                                        <TextBlock x:Name="TxtGameBenchmarkGuide" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"
+                                                   AutomationProperties.LiveSetting="Polite"/>
+                                    </Border>
+                                    <TextBlock Text="Mantén los mismos gráficos, resolución, límite de FPS y fuente de energía en A y B. Al pulsar Medir tienes 5 segundos para volver al juego."
+                                               Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                    <WrapPanel Margin="0,0,0,6">
+                                        <Button Content="Seleccionar PresentMon" Style="{StaticResource SecondaryBtn}" Click="BtnChoosePresentMon_Click" Margin="0,0,8,4"/>
+                                        <Button Content="Descarga oficial" Style="{StaticResource LinkBtn}" Click="BtnPresentMonDownload_Click" Margin="0,0,8,4"/>
+                                        <TextBlock x:Name="TxtPresentMonFile" Text="Consola PresentMon 2.x requerida" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,0,4"/>
+                                    </WrapPanel>
+                                    <Label Content="Ventana del juego" Target="{Binding ElementName=CmbGameTarget}" Foreground="{DynamicResource TextBrush}"/>
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Buscar ventanas" Style="{StaticResource SecondaryBtn}" Click="BtnRefreshGameTargets_Click" Margin="8,0,0,0"/>
+                                        <ComboBox x:Name="CmbGameTarget" DisplayMemberPath="Label" MinHeight="28"/>
+                                    </DockPanel>
+                                    <Label Content="Escena y ajustes" Target="{Binding ElementName=TxtGameScenario}" Foreground="{DynamicResource TextBrush}"/>
+                                    <TextBox x:Name="TxtGameScenario" MaxLength="180" Padding="6"/>
+                                    <WrapPanel Margin="0,10,0,8">
+                                        <Label Content="Segundos" Target="{Binding ElementName=CmbGameDuration}" Foreground="{DynamicResource TextBrush}"/>
+                                        <ComboBox x:Name="CmbGameDuration" Width="74" Margin="0,0,10,4"/>
+                                        <Button x:Name="BtnGamePassA" Content="Medir A" Tag="A" Style="{StaticResource PrimaryBtn}" Click="BtnGameCapture_Click" Margin="0,0,8,4"/>
+                                        <Button x:Name="BtnGamePassB" Content="Medir B" Tag="B" Style="{StaticResource SecondaryBtn}" Click="BtnGameCapture_Click" Margin="0,0,0,4"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="TxtGameBenchmarkSummary" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                    <DataGrid x:Name="GridGameBenchmark" Style="{StaticResource BenchmarkTable}" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False" CanUserSortColumns="False" Margin="0,0,0,5">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Métrica" Binding="{Binding Metric}" Width="2*"/>
+                                            <DataGridTextColumn Header="A · Referencia" Binding="{Binding A}" Width="*"/>
+                                            <DataGridTextColumn Header="B · Comparación" Binding="{Binding B}" Width="*"/>
+                                            <DataGridTextColumn Header="B − A" Binding="{Binding Delta}" Width="*"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <TextBlock x:Name="TxtGameTemperatureSource" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"
+                                               TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                    <TextBlock Text="FPS de fotogramas presentados. El 1 % low usa el promedio de los tiempos del 1 % de fotogramas más lentos." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="BatteryBenchmarkCard" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="16">
+                                <StackPanel>
+                                    <TextBlock Text="Consumo en batería" FontSize="17" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Desenchufa el cargador y repite la misma tarea con el mismo brillo y una carga inicial parecida. Para comparar Chill, actívalo antes de medir B." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,8"/>
+                                    <Label Content="Tarea de la sesión" Target="{Binding ElementName=TxtBatteryScenario}" Foreground="{DynamicResource TextBrush}"/>
+                                    <TextBox x:Name="TxtBatteryScenario" MaxLength="180" Padding="6"/>
+                                    <WrapPanel Margin="0,10,0,8">
+                                        <Label Content="Minutos" Target="{Binding ElementName=CmbBatteryDuration}" Foreground="{DynamicResource TextBrush}"/>
+                                        <ComboBox x:Name="CmbBatteryDuration" Width="74" Margin="0,0,10,4"/>
+                                        <Button Content="Medir A" Tag="A" Style="{StaticResource PrimaryBtn}" Click="BtnBatteryCapture_Click" Margin="0,0,8,4"/>
+                                        <Button Content="Medir B" Tag="B" Style="{StaticResource SecondaryBtn}" Click="BtnBatteryCapture_Click" Margin="0,0,0,4"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="TxtBatteryBenchmarkSummary" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                    <DataGrid x:Name="GridBatteryBenchmark" Style="{StaticResource BenchmarkTable}" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False" CanUserSortColumns="False">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Métrica" Binding="{Binding Metric}" Width="2*"/>
+                                            <DataGridTextColumn Header="A" Binding="{Binding A}" Width="*"/>
+                                            <DataGridTextColumn Header="B" Binding="{Binding B}" Width="*"/>
+                                            <DataGridTextColumn Header="B − A" Binding="{Binding Delta}" Width="*"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <GridSplitter x:Name="ActivityLogSplitter" Grid.Row="3" Grid.Column="1" Visibility="Collapsed"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent"
+                      ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ShowsPreview="True"
+                      ToolTip="Arrastra para cambiar el ancho del registro" AutomationProperties.Name="Cambiar el ancho del registro"
+                      DragCompleted="ActivityLogSplitter_DragCompleted" KeyUp="ActivityLogSplitter_KeyUp">
+            <GridSplitter.Template>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Border Background="{TemplateBinding Background}">
+                        <Border Width="2" CornerRadius="1" Margin="0,9" Background="{DynamicResource StrokeBrush}"
+                                HorizontalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </GridSplitter.Template>
+        </GridSplitter>
+        <Border x:Name="ActivityLogPanel" Grid.Row="3" Grid.Column="2" Panel.ZIndex="2" Visibility="Collapsed"
+                Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"
+                CornerRadius="9" Padding="12,10" PreviewKeyDown="ActivityLogPanel_PreviewKeyDown">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="0,0,0,1" Padding="0,0,0,8" Margin="0,0,0,8">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Cerrar" Style="{StaticResource SecondaryBtn}" Click="BtnToggleActivityLog_Click"
+                                Padding="9,4" Margin="8,0,0,0" AutomationProperties.Name="Cerrar registro de actividad"/>
+                        <TextBlock Text="Registro de actividad" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    </DockPanel>
+                </Border>
+                <TextBox x:Name="TxtLog" IsReadOnly="True" Background="Transparent" BorderThickness="0" Padding="0"
+                         Foreground="{DynamicResource TextBrush}" FontSize="16"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" TextWrapping="Wrap"
+                         AutomationProperties.Name="Registro de actividad"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

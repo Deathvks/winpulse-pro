@@ -1,0 +1,48 @@
+<Window x:Class="WinPulseOptimizer.ProfileReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ajustes del perfil" Icon="Assets/WinPulse.ico" Width="940" Height="590" MinWidth="690" MinHeight="360"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI">
+    <Window.Resources>
+        <Style x:Key="WrappedValue" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+    </Window.Resources>
+    <DockPanel Margin="20">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock Text="{Binding Action}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Timestamp}" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0"/>
+            <TextBlock Text="{Binding Explanation}" FontSize="13" Margin="0,5,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ResultDelta}" FontSize="13" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <Button DockPanel.Dock="Right" Content="Cerrar" IsCancel="True" Style="{StaticResource SecondaryBtn}" Margin="12,0,0,0"/>
+            <TextBlock Text="Confirmado muestra el valor que WinPulse leyó al terminar la operación."
+                       Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+        </DockPanel>
+        <DataGrid ItemsSource="{Binding ProfileSettings}" IsReadOnly="True" AutoGenerateColumns="False"
+                  CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="False"
+                  HeadersVisibility="Column" Background="{DynamicResource PanelBrush}" RowBackground="{DynamicResource PanelBrush}"
+                  AlternatingRowBackground="{DynamicResource RaisedBrush}" Foreground="{DynamicResource TextBrush}"
+                  BorderBrush="{DynamicResource StrokeBrush}" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource StrokeBrush}"
+                  FontSize="13">
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource RaisedBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                    <Setter Property="Padding" Value="8,8"/>
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Ajuste" Binding="{Binding Setting}" Width="1.45*" ElementStyle="{StaticResource WrappedValue}"/>
+                <DataGridTextColumn Header="Anterior" Binding="{Binding Before}" Width="*" ElementStyle="{StaticResource WrappedValue}"/>
+                <DataGridTextColumn Header="Solicitado" Binding="{Binding Requested}" Width="*" ElementStyle="{StaticResource WrappedValue}"/>
+                <DataGridTextColumn Header="Confirmado" Binding="{Binding Confirmed}" Width="*" ElementStyle="{StaticResource WrappedValue}"/>
+                <DataGridTextColumn Header="Estado" Binding="{Binding Status}" Width="1.25*" ElementStyle="{StaticResource WrappedValue}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

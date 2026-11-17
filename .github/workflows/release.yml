@@ -1,0 +1,104 @@
+name: Publicar WinPulse
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winpulse-stable-release
+  cancel-in-progress: false
+
+env:
+  DOWNLOAD_REPOSITORY: Deathvks/winpulse-releases
+
+jobs:
+  release:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Leer versión
+        id: version
+        shell: pwsh
+        run: |
+          [xml] $project = Get-Content -LiteralPath WinPulseOptimizer.csproj -Raw
+          $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+          $runtime = $project.SelectSingleNode('/Project/PropertyGroup/RuntimeFrameworkVersion').InnerText
+          if ($version -notmatch '^\d+\.\d+\.\d+$' -or $runtime -notmatch '^10\.0\.\d+$') {
+            throw 'La versión de WinPulse o de .NET no es válida.'
+          }
+          "app=$version" >> $env:GITHUB_OUTPUT
+          "runtime=$runtime" >> $env:GITHUB_OUTPUT
+
+      - name: Comprobar si hay que publicar
+        id: check
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          APP_VERSION: ${{ steps.version.outputs.app }}
+        run: |
+          if (!$env:GH_TOKEN) { throw 'Falta el secreto RELEASES_TOKEN para el repositorio público de descargas.' }
+          $isPrivate = gh repo view $env:DOWNLOAD_REPOSITORY --json isPrivate --jq '.isPrivate'
+          if ($LASTEXITCODE -ne 0 -or $isPrivate -ne 'false') { throw 'El destino de las descargas debe ser el repositorio público.' }
+          $json = gh api "repos/$env:DOWNLOAD_REPOSITORY/releases?per_page=100" --paginate --slurp
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub no pudo comprobar las versiones publicadas.' }
+          $version = [version]$env:APP_VERSION
+          $publish = $true
+          foreach ($page in (ConvertFrom-Json -InputObject ($json -join "`n") -NoEnumerate)) {
+            foreach ($release in $page) {
+              if ($release.tag_name -notmatch '^v(\d+\.\d+\.\d+)$') { continue }
+              $existing = [version]$Matches[1]
+              if ($existing -eq $version -and $release.draft) { throw "Ya existe un borrador de v$version. Revísalo en GitHub antes de reintentar." }
+              if (!$release.draft -and !$release.prerelease -and $existing -ge $version) { $publish = $false }
+            }
+          }
+          "publish=$($publish.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - name: Instalar SDK de .NET 10
+        if: steps.check.outputs.publish == 'true'
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.404'
+
+      - name: Compilar instalador
+        if: steps.check.outputs.publish == 'true'
+        shell: pwsh
+        env:
+          RUNTIME_VERSION: ${{ steps.version.outputs.runtime }}
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'winpulse-tools'
+          New-Item -ItemType Directory -Path $tools -Force | Out-Null
+          $runtimeName = "windowsdesktop-runtime-$env:RUNTIME_VERSION-win-x64.exe"
+          $runtime = Join-Path $tools $runtimeName
+          $compilerSetup = Join-Path $tools 'innosetup-7.1.1-x64.exe'
+          $compiler = Join-Path $tools 'Inno'
+          Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/$env:RUNTIME_VERSION/$runtimeName" -OutFile $runtime
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe' -OutFile $compilerSetup
+          if ((Get-FileHash -LiteralPath $compilerSetup -Algorithm SHA256).Hash -ne '8A5A6711C3766A6E5FB74F280BA0E3551E719CE94538D901FDBD1F8F9920B3F0') {
+            throw 'El compilador de Inno Setup no coincide con el archivo verificado.'
+          }
+          $setupArgs = '/PORTABLE=1 /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="' + $compiler + '"'
+          $setup = Start-Process -FilePath $compilerSetup -ArgumentList $setupArgs -WindowStyle Hidden -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "No se pudo preparar Inno Setup. Código $($setup.ExitCode)." }
+          .\Installer\Build-Installer.ps1 -DotNetExe (Get-Command dotnet.exe).Source `
+            -IsccExe (Join-Path $compiler 'ISCC.exe') -RuntimeInstaller $runtime
+
+      - name: Publicar instalador estable
+        if: steps.check.outputs.publish == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          APP_VERSION: ${{ steps.version.outputs.app }}
+        run: |
+          $version = $env:APP_VERSION
+          $asset = "bin/WinPulsePro-$version/WinPulseSetup.exe"
+          gh release create "v$version" $asset --repo $env:DOWNLOAD_REPOSITORY --latest `
+            --title "WinPulse Pro $version" --notes 'Descarga WinPulseSetup.exe para instalar o actualizar WinPulse Pro en Windows x64.'
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub no pudo publicar el instalador.' }

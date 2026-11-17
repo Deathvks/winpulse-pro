@@ -1,0 +1,18 @@
+<Window x:Class="WinPulseOptimizer.UpdateAvailableWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nueva versión de WinPulse Pro" Icon="Assets/WinPulse.ico" Width="455" SizeToContent="Height"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource TextBrush}"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14">
+    <StackPanel Margin="24">
+        <TextBlock x:Name="UpdateHeading" FontSize="23" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                   Text="Puedes ver los cambios y descargar el instalador para Windows en la página oficial de WinPulse en GitHub."/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button Content="Más tarde" IsCancel="True" Style="{StaticResource SecondaryBtn}"/>
+            <Button Content="Ver actualización" IsDefault="True" Margin="8,0,0,0" Style="{StaticResource PrimaryBtn}"
+                    Click="ShowUpdate_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
