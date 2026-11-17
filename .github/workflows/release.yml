@@ -41,25 +41,31 @@ jobs:
         id: check
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
           APP_VERSION: ${{ steps.version.outputs.app }}
         run: |
-          if (!$env:GH_TOKEN) { throw 'Falta el secreto RELEASES_TOKEN para el repositorio público de descargas.' }
-          $isPrivate = gh repo view $env:DOWNLOAD_REPOSITORY --json isPrivate --jq '.isPrivate'
-          if ($LASTEXITCODE -ne 0 -or $isPrivate -ne 'false') { throw 'El destino de las descargas debe ser el repositorio público.' }
-          $json = gh api "repos/$env:DOWNLOAD_REPOSITORY/releases?per_page=100" --paginate --slurp
-          if ($LASTEXITCODE -ne 0) { throw 'GitHub no pudo comprobar las versiones publicadas.' }
+          $headers = @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'WinPulse-Releases' }
+          $repositoryUrl = "https://api.github.com/repos/$env:DOWNLOAD_REPOSITORY"
+          $repository = Invoke-RestMethod $repositoryUrl -Headers $headers
+          if ($repository.private -ne $false) { throw 'El destino de las descargas debe ser el repositorio público.' }
           $version = [version]$env:APP_VERSION
           $publish = $true
-          foreach ($page in (ConvertFrom-Json -InputObject ($json -join "`n") -NoEnumerate)) {
-            foreach ($release in $page) {
-              if ($release.tag_name -notmatch '^v(\d+\.\d+\.\d+)$') { continue }
-              $existing = [version]$Matches[1]
-              if ($existing -eq $version -and $release.draft) { throw "Ya existe un borrador de v$version. Revísalo en GitHub antes de reintentar." }
-              if (!$release.draft -and !$release.prerelease -and $existing -ge $version) { $publish = $false }
+          for ($page = 1; $publish; $page++) {
+            $releases = Invoke-RestMethod "$repositoryUrl/releases?per_page=100&page=$page" -Headers $headers
+            foreach ($release in $releases) {
+              if (!$release.draft -and !$release.prerelease -and $release.tag_name -match '^v(\d+\.\d+\.\d+)$' -and
+                  [version]$Matches[1] -ge $version) { $publish = $false; break }
             }
+            if ($releases.Count -lt 100) { break }
           }
           "publish=$($publish.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - name: Comprobar acceso de publicación
+        if: steps.check.outputs.publish == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if (!$env:GH_TOKEN) { throw 'Falta el secreto RELEASES_TOKEN con permiso Contents: Read and write en el repositorio de descargas.' }
 
       - name: Instalar SDK de .NET 10
         if: steps.check.outputs.publish == 'true'
