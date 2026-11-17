@@ -427,8 +427,8 @@ namespace WinPulseOptimizer
                     var origBrush = targetBorder.BorderBrush;
                     var origThick = targetBorder.BorderThickness;
 
-                    targetBorder.Background = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#182C44"));
-                    targetBorder.BorderBrush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0A84FF"));
+                    targetBorder.Background = (System.Windows.Media.Brush)FindResource("AccentSoftBrush");
+                    targetBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentBrush");
                     targetBorder.BorderThickness = new Thickness(1.5);
 
                     await Task.Delay(1600);

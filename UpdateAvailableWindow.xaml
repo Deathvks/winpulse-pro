@@ -4,7 +4,7 @@
         Title="Nueva versión de WinPulse Pro" Icon="Assets/WinPulse.ico" Width="455" SizeToContent="Height"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource TextBrush}"
-        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14">
+        FontFamily="{DynamicResource DisplayFont}" FontSize="14">
     <StackPanel Margin="24">
         <TextBlock x:Name="UpdateHeading" FontSize="23" FontWeight="SemiBold" TextWrapping="Wrap"/>
         <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
