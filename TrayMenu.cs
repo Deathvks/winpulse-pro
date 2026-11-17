@@ -65,7 +65,7 @@ internal sealed class TrayMenu : ContextMenuStrip
         UpdateState("Plan de Windows", "", busy: false, canExit: true);
     }
 
-    internal void UpdateState(string title, string tag, bool busy, bool canExit)
+    internal void UpdateState(string title, string tag, bool busy, bool canExit, bool pendingReapply = false)
     {
         bool highContrast = SystemInformation.HighContrast;
         Renderer = highContrast ? _highContrast : _dark;
@@ -76,10 +76,11 @@ internal sealed class TrayMenu : ContextMenuStrip
         _brand.ForeColor = ForeColor;
         _status.ForeColor = highContrast ? SystemColors.MenuText : _muted;
         _exit.ForeColor = highContrast ? SystemColors.MenuText : _danger;
-        _status.Text = $"Activo: {title}" + (busy ? "  ·  Operación en curso" : "");
-        _gaming.Checked = tag == "JUGAR";
-        _study.Checked = tag == "ESTUDIAR";
-        _chill.Checked = tag == "CHILL";
+        string prefix = pendingReapply ? "Requiere reaplicar: " : "Activo: ";
+        _status.Text = $"{prefix}{title}" + (busy ? "  ·  Operación en curso" : "");
+        _gaming.Checked = !pendingReapply && tag == "JUGAR";
+        _study.Checked = !pendingReapply && tag == "ESTUDIAR";
+        _chill.Checked = !pendingReapply && tag == "CHILL";
         _gaming.Enabled = _study.Enabled = _chill.Enabled = _memory.Enabled = !busy;
         _exit.Enabled = canExit;
     }

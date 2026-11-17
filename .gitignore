@@ -13,3 +13,5 @@
 *.key
 .env
 .env.*
+/UsageServer/.dev.vars*
+/UsageServer/.wrangler/

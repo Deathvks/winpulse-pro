@@ -7,7 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\WinPulse.ico</ApplicationIcon>
-    <Version>1.1.32</Version>
+    <Version>1.1.37</Version>
     <RuntimeFrameworkVersion>10.0.15</RuntimeFrameworkVersion>
     <AppHostDotNetSearch Condition="'$(PublishSingleFile)' == 'true'">Global</AppHostDotNetSearch>
     <DefineConstants Condition="'$(PublishSingleFile)' == 'true'">$(DefineConstants);WINPULSE_INSTALLER</DefineConstants>
@@ -15,5 +15,11 @@
   <ItemGroup>
     <Resource Include="Assets\WinPulse.ico" />
     <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(WINPULSE_USAGE_ENDPOINT)' != ''">
+    <AssemblyMetadata Include="WinPulseUsageEndpoint" Value="$(WINPULSE_USAGE_ENDPOINT)" />
+    <AssemblyMetadata Include="WinPulseUsageController" Value="$(WINPULSE_USAGE_CONTROLLER)" />
+    <AssemblyMetadata Include="WinPulseUsageContact" Value="$(WINPULSE_USAGE_CONTACT)" />
+    <AssemblyMetadata Include="WinPulseUsagePolicy" Value="$(WINPULSE_USAGE_POLICY)" />
   </ItemGroup>
 </Project>

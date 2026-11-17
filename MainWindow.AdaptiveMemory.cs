@@ -92,6 +92,7 @@ public partial class MainWindow
 
             _adjustedDuringPressure = true;
             _nextMemoryAdjustmentAt = Environment.TickCount64 + 300_000;
+            _usageStatistics.RecordAdaptiveMemoryAdjustment();
             TxtAdaptiveMemoryStatus.Text = $"Último ajuste · {candidate.Name} · {DateTime.Now:t}";
             Log($"Ajuste automático de memoria en {candidate.Name}.exe por falta sostenida de RAM disponible.");
         }

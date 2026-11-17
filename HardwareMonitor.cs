@@ -18,6 +18,7 @@ namespace WinPulseOptimizer
     }
     public record SystemSnapshot(DateTime Timestamp, long SampleOrder, float CpuPercent, double CpuGhz, double UsedRamGb, double FreeRamGb, double TotalRamGb, int ProcessCount, string PowerScheme, GpuTelemetry Gpu);
     public record ProcessItem(int Pid, string Name, double RamMb, string Category);
+    internal sealed record RunningGame(string Name, int Pid, long? CreationTime);
 
     public static class HardwareMonitor
     {
@@ -107,17 +108,17 @@ namespace WinPulseOptimizer
             path.Contains(@"Riot Games\", StringComparison.OrdinalIgnoreCase) ||
             path.Contains(@"Ubisoft Game Launcher\games\", StringComparison.OrdinalIgnoreCase);
 
-        public static string? DetectRunningGame(IEnumerable<string> included, IEnumerable<string> excluded,
+        internal static RunningGame? DetectRunningGame(IEnumerable<string> included, IEnumerable<string> excluded,
             IEnumerable<string>? preferred = null)
         {
             var allow = included.ToHashSet(StringComparer.OrdinalIgnoreCase);
             var deny = excluded.ToHashSet(StringComparer.OrdinalIgnoreCase);
             var order = preferred?.Where(name => !deny.Contains(name)).ToArray() ?? [];
             var preferredNames = order.ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var runningPreferred = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var runningPreferred = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             using var current = Process.GetCurrentProcess();
             int sessionId = current.SessionId;
-            string? detected = null;
+            (string Name, int Pid)? detected = null;
             foreach (var p in Process.GetProcesses())
             {
                 using var process = p;
@@ -128,14 +129,14 @@ namespace WinPulseOptimizer
                     string name = p.ProcessName;
                     if (preferredNames.Contains(name))
                     {
-                        runningPreferred.Add(name);
+                        runningPreferred.TryAdd(name, p.Id);
                         continue;
                     }
                     if (detected != null) continue;
                     bool? rule = MatchGameRule(name, allow, deny);
                     if (rule.HasValue)
                     {
-                        if (rule.Value) detected = name;
+                        if (rule.Value) detected = (name, p.Id);
                         continue;
                     }
 
@@ -149,15 +150,22 @@ namespace WinPulseOptimizer
                                 !name.Contains("Client", StringComparison.OrdinalIgnoreCase) &&
                                 !name.Equals("Steam", StringComparison.OrdinalIgnoreCase))
                             {
-                                detected = name;
+                                detected = (name, p.Id);
                             }
                         }
                     }
                 }
                 catch { }
             }
-            return order.FirstOrDefault(runningPreferred.Contains) ?? detected;
+            foreach (string name in order)
+            {
+                if (runningPreferred.TryGetValue(name, out int pid)) return new RunningGame(name, pid, ProcessResourceMonitor.ReadRunningCreationTime(pid));
+            }
+            return detected is { } game ? new RunningGame(game.Name, game.Pid, ProcessResourceMonitor.ReadRunningCreationTime(game.Pid)) : null;
         }
+
+        internal static bool IsSameGameRunning(RunningGame game) => game.CreationTime is long creation &&
+            ProcessResourceMonitor.ReadRunningCreationTime(game.Pid) == creation;
 
         public static bool IsAcOnline() => GetAcState() == true;
 

@@ -1,0 +1,14 @@
+{
+  "name": "winpulse-usage",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-17",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "triggers": { "crons": ["0 9 * * *"] },
+  "d1_databases": [
+    { "binding": "USAGE_DB", "database_name": "winpulse-usage", "database_id": "REEMPLAZA_CON_EL_ID_DE_D1" }
+  ],
+  "ratelimits": [
+    { "name": "USAGE_RATE", "namespace_id": "1001", "simple": { "limit": 15, "period": 60 } }
+  ]
+}

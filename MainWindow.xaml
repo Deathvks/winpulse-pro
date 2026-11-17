@@ -33,6 +33,7 @@
                 <Button x:Name="BtnToggleActivityLog" Content="Registro" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"
                         ToolTip="Abrir registro de actividad" AutomationProperties.Name="Abrir registro de actividad"
                         Click="BtnToggleActivityLog_Click"/>
+                <Button Content="Privacidad" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" Click="BtnPrivacy_Click"/>
                 <Button Content="Salir" Style="{StaticResource DangerBtn}" Padding="12,7" ToolTip="Cerrar WinPulse Pro por completo. La X lo oculta junto al reloj." Click="BtnExitApp_Click"/>
             </StackPanel>
             <Image x:Name="ImgAppLogo" DockPanel.Dock="Left" Width="32" Height="32" VerticalAlignment="Top" Margin="0,1,12,0"/>
@@ -42,6 +43,10 @@
                     <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="7" Padding="10,3" Margin="10,2,0,0" VerticalAlignment="Center">
                         <TextBlock x:Name="TxtOsBadge" Text="Windows 11" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
                     </Border>
+                    <Button x:Name="BtnUpdateStatus" Content="Buscar actualización" Style="{StaticResource LinkBtn}"
+                            MinHeight="24" Padding="9,3" FontSize="11.5"
+                            Margin="8,2,0,0" VerticalAlignment="Center" Click="BtnUpdateStatus_Click"
+                            ToolTip="Comprobar si hay una versión nueva disponible en GitHub"/>
                 </WrapPanel>
                 <TextBlock x:Name="TxtHardware" Text="Detectando equipo..." FontSize="12" Foreground="{DynamicResource QuietBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
@@ -104,8 +109,8 @@
                 </WrapPanel>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
                     <DockPanel>
-                        <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,5,8,0" VerticalAlignment="Top"/>
-                        <TextBlock DockPanel.Dock="Left" Text="PLAN ACTIVO:" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource QuietBrush}" Margin="0,2,5,0" VerticalAlignment="Top"/>
+                        <Ellipse x:Name="DotActiveProfile" DockPanel.Dock="Left" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,5,8,0" VerticalAlignment="Top"/>
+                        <TextBlock x:Name="TxtActiveModeLabel" DockPanel.Dock="Left" Text="PLAN ACTIVO:" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource QuietBrush}" Margin="0,2,5,0" VerticalAlignment="Top"/>
                         <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
                     </DockPanel>
                     <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
@@ -212,7 +217,7 @@
                                                   AutomationProperties.Name="Iniciar minimizado con Windows"/>
                                         <StackPanel>
                                             <ContentControl Content="Iniciar minimizado junto al reloj al encender Windows" Tag="{StaticResource StartGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                            <TextBlock Text="Arranca en segundo plano al iniciar sesión y mantiene activo el vigilante de juegos. Los cambios protegidos se autorizan desde WinPulse." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="23,2,0,0"/>
+                                            <TextBlock Text="Windows pide permiso de administrador al activar o desactivar esta opción. Al iniciar sesión, WinPulse abre minimizado con permisos normales." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="23,2,0,0"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>

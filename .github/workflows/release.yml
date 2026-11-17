@@ -30,12 +30,8 @@ jobs:
         run: |
           [xml] $project = Get-Content -LiteralPath WinPulseOptimizer.csproj -Raw
           $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
-          $runtime = $project.SelectSingleNode('/Project/PropertyGroup/RuntimeFrameworkVersion').InnerText
-          if ($version -notmatch '^\d+\.\d+\.\d+$' -or $runtime -notmatch '^10\.0\.\d+$') {
-            throw 'La versión de WinPulse o de .NET no es válida.'
-          }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'La versión de WinPulse no es válida.' }
           "app=$version" >> $env:GITHUB_OUTPUT
-          "runtime=$runtime" >> $env:GITHUB_OUTPUT
 
       - name: Comprobar si hay que publicar
         id: check
@@ -77,15 +73,15 @@ jobs:
         if: steps.check.outputs.publish == 'true'
         shell: pwsh
         env:
-          RUNTIME_VERSION: ${{ steps.version.outputs.runtime }}
+          WINPULSE_USAGE_ENDPOINT: ${{ vars.WINPULSE_USAGE_ENDPOINT }}
+          WINPULSE_USAGE_CONTROLLER: ${{ vars.WINPULSE_USAGE_CONTROLLER }}
+          WINPULSE_USAGE_CONTACT: ${{ vars.WINPULSE_USAGE_CONTACT }}
+          WINPULSE_USAGE_POLICY: ${{ vars.WINPULSE_USAGE_POLICY }}
         run: |
           $tools = Join-Path $env:RUNNER_TEMP 'winpulse-tools'
           New-Item -ItemType Directory -Path $tools -Force | Out-Null
-          $runtimeName = "windowsdesktop-runtime-$env:RUNTIME_VERSION-win-x64.exe"
-          $runtime = Join-Path $tools $runtimeName
           $compilerSetup = Join-Path $tools 'innosetup-7.1.1-x64.exe'
           $compiler = Join-Path $tools 'Inno'
-          Invoke-WebRequest "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/$env:RUNTIME_VERSION/$runtimeName" -OutFile $runtime
           Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe' -OutFile $compilerSetup
           if ((Get-FileHash -LiteralPath $compilerSetup -Algorithm SHA256).Hash -ne '8A5A6711C3766A6E5FB74F280BA0E3551E719CE94538D901FDBD1F8F9920B3F0') {
             throw 'El compilador de Inno Setup no coincide con el archivo verificado.'
@@ -94,7 +90,7 @@ jobs:
           $setup = Start-Process -FilePath $compilerSetup -ArgumentList $setupArgs -WindowStyle Hidden -Wait -PassThru
           if ($setup.ExitCode -ne 0) { throw "No se pudo preparar Inno Setup. Código $($setup.ExitCode)." }
           .\Installer\Build-Installer.ps1 -DotNetExe (Get-Command dotnet.exe).Source `
-            -IsccExe (Join-Path $compiler 'ISCC.exe') -RuntimeInstaller $runtime
+            -IsccExe (Join-Path $compiler 'ISCC.exe')
 
       - name: Publicar instalador estable
         if: steps.check.outputs.publish == 'true'

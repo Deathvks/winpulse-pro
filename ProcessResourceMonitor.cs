@@ -20,6 +20,15 @@ internal static partial class ProcessResourceMonitor
 
     private sealed record Sample(string Name, double RamMb, long Timestamp, long? Created, long CpuTicks, ulong? IoBytes);
 
+    internal static long? ReadRunningCreationTime(int pid)
+    {
+        const uint Synchronize = 0x00100000;
+        const uint WaitTimeout = 0x00000102;
+        using var handle = OpenProcess(QueryLimitedInformation | Synchronize, false, pid);
+        return !handle.IsInvalid && GetProcessTimes(handle, out long creation, out _, out _, out _) &&
+            WaitForSingleObject(handle, 0) == WaitTimeout ? creation : null;
+    }
+
     internal static async Task<ProcessResourceUsage[]> MeasureAsync(CancellationToken cancellation)
     {
         var before = ReadProcesses(cancellation);
@@ -101,4 +110,7 @@ internal static partial class ProcessResourceMonitor
 
     [DllImport("kernel32.dll")]
     private static extern uint GetActiveProcessorCount(ushort group);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
 }

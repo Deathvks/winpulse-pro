@@ -11,6 +11,7 @@ namespace WinPulseOptimizer
         string Confirmed, string Status)
     {
         internal const string PendingRestartStatus = "Guardado · requiere reinicio";
+        internal const string BlockedPlanStatus = "Bloqueado por directiva del plan (1260)";
     }
 
     internal sealed class ProfileChangeException(string message, Exception inner, ProfileSettingResult[] settings)
@@ -22,7 +23,7 @@ namespace WinPulseOptimizer
     public static partial class OptimizerEngine
     {
         private const string UnavailableValue = "No disponible";
-        private const string BlockedPlan = "Bloqueado por directiva del plan (1260)";
+        private const string BlockedPlan = ProfileSettingResult.BlockedPlanStatus;
         private static Dictionary<(string Type, string Target), ProfileSettingAttempt>? _profileSettings;
 
         private sealed class ProfileSettingAttempt(string name, string? before, Func<string?>? read, bool restart)

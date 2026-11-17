@@ -11,6 +11,8 @@ namespace WinPulseOptimizer
         private bool _checkingAutomation;
         private string? _lastAutomationTarget;
         private string? _detectedGame;
+        private RunningGame? _trackedGame;
+        private long _nextFullGameScanAt;
         private bool _automationTargetKnown;
         private bool _manualAutomationOverride;
         private long _retryAutomationAt;
@@ -56,6 +58,7 @@ namespace WinPulseOptimizer
         {
             _manualAutomationOverride = false;
             _retryAutomationAt = 0;
+            _nextFullGameScanAt = 0;
         }
 
         internal static string? ChooseAutomaticProfile(bool? onAc, bool gameDetected, bool allowGameOnBattery, bool chillOnBattery,
@@ -106,14 +109,23 @@ namespace WinPulseOptimizer
                 string activeTag = _activeProfileTag;
                 bool detectGames = SwAutoGame.IsChecked == true;
                 string priorityTag = _lastAutomationTarget ?? activeTag;
-                string[] preferred = profiles.OrderByDescending(profile => profile.OwnsTag(priorityTag))
-                    .SelectMany(profile => profile.Executables).ToArray();
-                string? game = detectGames ? await Task.Run(() => HardwareMonitor.DetectRunningGame(included, excluded, preferred)) : null;
+                var tracked = _trackedGame;
+                bool preferFastCheck = !approved && Environment.TickCount64 < _nextFullGameScanAt;
+                var (running, fullScan) = detectGames ? await Task.Run(() =>
+                {
+                    if (preferFastCheck && tracked != null && HardwareMonitor.IsSameGameRunning(tracked)) return (tracked, false);
+                    var preferred = profiles.OrderByDescending(profile => profile.OwnsTag(priorityTag))
+                        .SelectMany(profile => profile.Executables);
+                    return (HardwareMonitor.DetectRunningGame(included, excluded, preferred), true);
+                }) : (null, false);
                 if (_systemChangeInProgress || _benchmarkCancellation != null || _networkTesting ||
                     SwPauseAutomationForTests.IsChecked == true || activeTag != _activeProfileTag || profiles != _gameProfiles ||
                     detectGames != (SwAutoGame.IsChecked == true) || included != _includedGames || excluded != _excludedGames)
                     return;
 
+                _trackedGame = running;
+                if (fullScan) _nextFullGameScanAt = Environment.TickCount64 + 12_000;
+                string? game = running?.Name;
                 if (_detectedGame != game)
                 {
                     _detectedGame = game;

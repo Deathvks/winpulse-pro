@@ -43,6 +43,7 @@ namespace WinPulseOptimizer
         private bool _startingUp = true;
         private bool _systemChangeInProgress;
         private string _activeProfileTag = "";
+        private bool _savedProfileNeedsReapply;
         private bool _forceExit = false;
         private bool? _lastAcState;
         private bool? _hasBattery;
@@ -51,6 +52,7 @@ namespace WinPulseOptimizer
         private HistoryEntry? _latestProfileReport;
         private SettingStatusWindow? _settingStatusWindow;
         private bool _readingLiveMetrics;
+        private long _nextGpuReadingAt;
         private long _lastLiveSampleOrder;
         private string? _lastNvidiaName;
         private string _detectedGpuSummary = "GPU";
@@ -63,8 +65,9 @@ namespace WinPulseOptimizer
         public MainWindow()
         {
             InitializeComponent();
-            var version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3);
-            Title = $"WinPulse Pro {version}";
+            var version = typeof(MainWindow).Assembly.GetName().Version;
+            Title = $"WinPulse Pro {version?.ToString(3)}";
+            InitializeUpdateButton(version);
             SourceInitialized += (_, _) => ApplyDarkTitleBar();
             SetupSystemTray();
 
@@ -76,8 +79,9 @@ namespace WinPulseOptimizer
             IsVisibleChanged += (_, _) => UpdateLiveMetricsSchedule();
             StateChanged += (_, _) => UpdateLiveMetricsSchedule();
             Activated += (_, _) => UpdateLiveMetricsSchedule();
-            Activated += async (_, _) => await CheckForUpdateAsync();
+            Activated += async (_, _) => await ShowForegroundNoticesAsync();
             Deactivated += (_, _) => UpdateLiveMetricsSchedule();
+            Deactivated += (_, _) => _usageUpload?.Cancel();
             Loaded += MainWindow_Loaded;
         }
 
@@ -89,7 +93,7 @@ namespace WinPulseOptimizer
 
             await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.Background);
             if (_forceExit) return;
-            bool initialized = false;
+            InitialState? initialized = null;
             try
             {
                 var stateReading = Task.Run(ReadInitialState);
@@ -115,12 +119,12 @@ namespace WinPulseOptimizer
                 HistoryManager.EnsureInitialBaseline(saved, startup.State, startup.Power, startup.Snapshot);
                 if (saved.Baseline is { } baseline) RenderInitialBaseline(baseline);
                 ShowHistory(saved.Entries);
-                RestoreSavedProfileBanner(saved.ActiveProfileTag ?? "");
+                RestoreSavedProfileBanner(saved.ActiveProfileTag ?? "", startup.ProfileVerification);
                 CaptureBeforeSnapshot(startup.Snapshot);
                 RenderLiveMetrics(startup.Snapshot);
-                ShowChangeCard("ESTADO AL ABRIR", startup.Snapshot.PowerScheme, "Todavía no hay una comparación en esta sesión.");
+                ShowStartupSnapshot(startup.Snapshot);
                 Log($"{Title} listo. Ejecutable: {Environment.ProcessPath ?? AppContext.BaseDirectory}");
-                initialized = true;
+                initialized = startup;
             }
             catch (Exception ex)
             {
@@ -135,16 +139,17 @@ namespace WinPulseOptimizer
             }
 
             if (_forceExit) return;
-            if (initialized) await ReapplySavedProfileOnStartupAsync();
+            if (initialized != null) await ReapplySavedProfileOnStartupAsync(initialized);
             if (_forceExit) return;
             _automationTimer.Start();
             UpdateLiveMetricsSchedule();
-            if (initialized) await ReconcileAutomationAsync();
-            if (initialized) await CheckForUpdateAsync();
+            if (initialized != null) await ReconcileAutomationAsync();
+            await ShowForegroundNoticesAsync();
         }
 
         private sealed record InitialState(AuditStore Saved, SystemInfo Info, PowerPlanDetails Power, bool PowerRestricted,
-            TweakState State, SystemSnapshot Snapshot, List<ProcessItem> Processes, List<StartupAppItem> StartupApps);
+            TweakState State, SystemSnapshot Snapshot, List<ProcessItem> Processes, List<StartupAppItem> StartupApps,
+            ProfileVerificationResult? ProfileVerification);
 
         private static InitialState ReadInitialState()
         {
@@ -155,8 +160,11 @@ namespace WinPulseOptimizer
             var snapshot = HardwareMonitor.CaptureSnapshot(power.EffectiveModeLabel, includeGpu: false);
             var processes = HardwareMonitor.GetTopMemoryProcesses(12);
             var startupApps = OptimizerEngine.GetStartupApps();
+            var profileVerification = TryParseUsageProfile(saved.ActiveProfileTag ?? "", out var savedProfile)
+                ? OptimizerEngine.VerifyProfileState(savedProfile, DefaultProfileAdjustments(savedProfile))
+                : null;
             return new(saved, info, power, OptimizerEngine.ReadEnforcedPowerPlan().HasValue, state, snapshot,
-                processes, startupApps);
+                processes, startupApps, profileVerification);
         }
 
         private void SetupSystemTray()
@@ -191,7 +199,8 @@ namespace WinPulseOptimizer
                     _ => TxtActiveModeTitle.Text
                 };
                 bool busy = _systemChangeInProgress || _benchmarkCancellation != null;
-                menu.UpdateState(title, _activeProfileTag, _startingUp || busy, !busy && _loadedPingCancellation == null);
+                menu.UpdateState(title, _activeProfileTag, _startingUp || busy, !busy && _loadedPingCancellation == null,
+                    _savedProfileNeedsReapply);
             };
 
             _trayIcon = new WinForms.NotifyIcon
@@ -220,6 +229,7 @@ namespace WinPulseOptimizer
             DashboardMetrics.Visibility = showMetrics ? Visibility.Visible : Visibility.Collapsed;
             BtnToggleDashboard.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
             BtnToggleDashboard.Content = showMetrics ? "Ocultar lecturas" : "Ver lecturas";
+            UpdateLiveMetricsSchedule();
         }
 
         private void HideToTray(bool showBalloon = true)
@@ -259,6 +269,8 @@ namespace WinPulseOptimizer
                 return;
             }
             _forceExit = true;
+            _usageUpload?.Cancel();
+            _usageStatistics.Flush();
             _processMeasurement?.Cancel();
             _automationTimer.Stop();
             _liveMetricsTimer.Stop();
@@ -287,25 +299,25 @@ namespace WinPulseOptimizer
             base.OnClosing(e);
         }
 
-        private async Task ReapplySavedProfileOnStartupAsync()
+        private async Task ReapplySavedProfileOnStartupAsync(InitialState startup)
         {
             try
             {
                 string selectedProfile = _activeProfileTag;
                 if (SwPauseAutomationForTests.IsChecked == true)
                 {
-                    ShowChangeCard("ESTADO AL ABRIR", "Automatización pausada", "Las Pruebas A/B mantienen el perfil actual.");
+                    ShowStartupSnapshot(startup.Snapshot, "Automatización pausada durante las Pruebas A/B.");
                     return;
                 }
                 var journal = SystemChangeJournal.Load();
                 if (journal.Pending != null || journal.RestoringOriginal.HasValue)
                 {
-                    ShowChangeCard("ESTADO AL ABRIR", "Recuperación pendiente", "Completa la recuperación desde Historial.");
+                    ShowStartupSnapshot(startup.Snapshot, "Recuperación pendiente. Complétala desde Historial.");
                     return;
                 }
                 if (journal.AutomationOperationId != null)
                 {
-                    ShowChangeCard("ESTADO AL ABRIR", "Perfil automático en curso", "WinPulse comprobará si debe recuperar el perfil previo.");
+                    ShowStartupSnapshot(startup.Snapshot, "WinPulse comprobará si el perfil automático debe volver al perfil previo.");
                     return;
                 }
                 if (selectedProfile.StartsWith("GAME:", StringComparison.Ordinal))
@@ -314,11 +326,36 @@ namespace WinPulseOptimizer
                     selectedProfile = "CUSTOM";
                 }
 
+                if (selectedProfile == "") return;
+                if (selectedProfile is "CUSTOM" or "ORIGINAL")
+                {
+                    ShowStartupSnapshot(startup.Snapshot, "WinPulse usa la configuración actual de Windows.");
+                    return;
+                }
+                if (!TryParseUsageProfile(selectedProfile, out var profile)) return;
+
+                var verification = startup.ProfileVerification ??
+                    await Task.Run(() => OptimizerEngine.VerifyProfileState(profile, DefaultProfileAdjustments(profile)));
+                string displayName = GetProfileDisplayName(selectedProfile);
+
+                if (verification.IsFullyActive)
+                {
+                    RestoreSavedProfileBanner(selectedProfile, verification);
+                    string status = $"Confirmado: todos los ajustes de «{displayName}» siguen activos en Windows.";
+                    if (verification.PendingRestart)
+                        status += " Algunos cambios previos surtirán efecto al reiniciar Windows.";
+                    ShowStartupSnapshot(startup.Snapshot, status, "PLAN ACTIVO AL ABRIR", "SuccessBrush");
+                    Log($"Al abrir WinPulse: «{displayName}» ya está activo y verificado en Windows.");
+                    return;
+                }
+
                 if (!WindowsElevation.IsAdministrator)
                 {
-                    if (selectedProfile != "")
-                        ShowChangeCard("ESTADO AL ABRIR", TxtActiveModeTitle.Text,
-                            "Para volver a aplicar el perfil guardado, selecciónalo en la barra superior.");
+                    RestoreSavedProfileBanner(selectedProfile, verification);
+                    string status = $"Faltan ajustes de «{displayName}» ({string.Join(", ", verification.Differences)}). " +
+                        $"Pulsa «{GetProfileButtonName(selectedProfile)}» para aplicarlo con permiso de administrador.";
+                    ShowStartupSnapshot(startup.Snapshot, status, "ESTADO AL ABRIR · REQUIERE REAPLICAR", "WarningBrush");
+                    Log($"Al abrir WinPulse: «{displayName}» requiere reaplicarse ({string.Join(", ", verification.Differences)}).");
                     return;
                 }
 
@@ -326,29 +363,22 @@ namespace WinPulseOptimizer
                 switch (selectedProfile)
                 {
                     case "JUGAR":
-                        await ApplyGamingModeAsync("Al abrir WinPulse: Jugar", explanation);
+                        await ApplyGamingModeAsync("Al abrir WinPulse: Jugar", explanation, skipVerification: true);
                         break;
                     case "CHILL":
-                        await ApplyChillModeAsync("Al abrir WinPulse: Estar Chill", explanation);
+                        await ApplyChillModeAsync("Al abrir WinPulse: Estar Chill", explanation, skipVerification: true);
                         break;
                     case "ESTUDIAR":
-                        await ApplyStudyModeAsync("Al abrir WinPulse: Estudiar / Trabajar", explanation);
+                        await ApplyStudyModeAsync("Al abrir WinPulse: Estudiar / Trabajar", explanation, skipVerification: true);
                         break;
                     case "FABRICA":
-                        await ApplyFactoryProfileAsync("Al abrir WinPulse: De fábrica", explanation);
+                        await ApplyFactoryProfileAsync("Al abrir WinPulse: De fábrica", explanation, skipVerification: true);
                         break;
-                    case "CUSTOM":
-                    case "ORIGINAL":
-                        ShowChangeCard("ESTADO AL ABRIR", TxtActiveModeTitle.Text,
-                            "WinPulse usa la configuración actual de Windows.");
-                        break;
-                    default:
-                        return;
                 }
             }
             catch (Exception ex)
             {
-                ShowChangeCard("ESTADO AL ABRIR", "No se pudo comprobar el perfil", "Consulta el registro.");
+                ShowStartupSnapshot(startup.Snapshot, "No se pudo comprobar el perfil guardado. Consulta el registro.");
                 Log($"No se pudo recuperar el perfil al abrir WinPulse. {ex.Message}");
             }
             finally { ResetAutomationOverride(); }
@@ -358,9 +388,18 @@ namespace WinPulseOptimizer
         {
             if (_loading) return;
             bool enable = SwStartWithWindows.IsChecked == true;
+            bool? current = await Task.Run(OptimizerEngine.IsAutoStartEnabled);
+            if (current == enable)
+            {
+                ShowChangeCard("AJUSTE YA APLICADO",
+                    enable ? "El inicio con Windows ya estaba activado" : "El inicio con Windows ya estaba desactivado",
+                    "No hizo falta realizar cambios.", "SuccessBrush");
+                Log($"El inicio con Windows ya estaba {(enable ? "activado" : "desactivado")}; no se realizaron cambios.");
+                return;
+            }
             await ApplySystemChangeAsync(
                 enable ? "Activaste el inicio silencioso con Windows" : "Desactivaste el inicio silencioso con Windows",
-                "Cambia el estado de la tarea de inicio de WinPulse.",
+                "Guardar este cambio en la tarea de inicio de Windows requiere permiso de administrador.",
                 "Pestaña 0: Automatización inteligente", 0, "", new(SystemAction.AutoStart, Enabled: enable));
         }
 
@@ -455,17 +494,72 @@ namespace WinPulseOptimizer
             await _settingStatusWindow.UpdateAsync(TxtActiveModeTitle.Text, _startingUp || _systemChangeInProgress);
         }
 
-        private void HighlightActiveProfileButton(System.Windows.Controls.Button? activeBtn, string title, string desc, string profileTag)
+        private static bool TryParseUsageProfile(string tag, out UsageProfile profile)
         {
+            switch (tag)
+            {
+                case "JUGAR": profile = UsageProfile.GamingMax; return true;
+                case "ESTUDIAR": profile = UsageProfile.StudyWork; return true;
+                case "CHILL": profile = UsageProfile.ChillBattery; return true;
+                case "FABRICA": profile = UsageProfile.FactoryDefault; return true;
+                default: profile = default; return false;
+            }
+        }
+
+        private static string GetProfileDisplayName(string tag) => tag switch
+        {
+            "JUGAR" => "Jugar (Máximo rendimiento)",
+            "ESTUDIAR" => "Estudiar / Trabajar",
+            "CHILL" => "Estar Chill",
+            "FABRICA" => "De fábrica",
+            _ => tag
+        };
+
+        private static string GetProfileButtonName(string tag) => tag switch
+        {
+            "JUGAR" => "Jugar (Máximo)",
+            "ESTUDIAR" => "Estudiar / Trabajar",
+            "CHILL" => "Estar Chill",
+            "FABRICA" => "De fábrica",
+            _ => tag
+        };
+
+        private static string FormatProfileBannerDescription(UsageProfile profile, string tag, ProfileVerificationResult? verification)
+        {
+            if (verification is { IsFullyActive: false })
+                return $"No coincide con Windows ahora ({string.Join(", ", verification.Differences.Take(3))}). Pulsa «{GetProfileButtonName(tag)}» para aplicarlo.";
+            string summary = OptimizerEngine.GetProfilePowerSummary(profile);
+            if (verification is { IsFullyActive: true })
+                return $"Confirmado en Windows{(verification.PendingRestart ? " (reinicio pendiente)" : "")} · {summary}";
+            return summary;
+        }
+
+        private void HighlightActiveProfileButton(System.Windows.Controls.Button? activeBtn, string title, string desc,
+            string profileTag, ProfileVerificationResult? verification = null)
+        {
+            bool needsReapply = verification is { IsFullyActive: false };
+            _savedProfileNeedsReapply = needsReapply;
+
             System.Windows.Controls.Button[] all = { BtnProfileJugar, BtnProfileEstudiar, BtnProfileChill, BtnProfileFabrica };
             foreach (var b in all)
-                b.Tag = b == activeBtn ? "SelectedProfile" : null;
+                b.Tag = b == activeBtn ? (needsReapply ? "PendingProfile" : "SelectedProfile") : null;
+
+            DotActiveProfile.SetResourceReference(System.Windows.Shapes.Shape.FillProperty,
+                needsReapply ? "WarningBrush" : "SuccessBrush");
+            TxtActiveModeLabel.Text = needsReapply ? "PLAN GUARDADO (SIN APLICAR):" : "PLAN ACTIVO:";
+            TxtActiveModeLabel.SetResourceReference(TextBlock.ForegroundProperty,
+                needsReapply ? "WarningBrush" : (activeBtn != null ? "SuccessBrush" : "QuietBrush"));
 
             TxtActiveModeTitle.Text = title;
             TxtActiveModeDesc.Text = desc;
-            if (_trayIcon != null) _trayIcon.Text = $"WinPulse Pro — {title}";
+            if (_trayIcon != null)
+            {
+                string trayText = needsReapply ? $"WinPulse Pro — {title} (sin aplicar)" : $"WinPulse Pro — {title}";
+                _trayIcon.Text = trayText.Length <= 63 ? trayText : trayText[..63];
+            }
+            bool tagChanged = _activeProfileTag != profileTag;
             _activeProfileTag = profileTag;
-            if (!_startingUp && !HistoryManager.SaveActiveProfileTag(profileTag))
+            if (!_startingUp && tagChanged && !HistoryManager.SaveActiveProfileTag(profileTag))
                 Log("No se pudo guardar el perfil seleccionado para el próximo inicio.");
         }
 
@@ -486,7 +580,7 @@ namespace WinPulseOptimizer
             TxtPwrOverlay.Text = pd.WindowsPowerOverlay;
         }
 
-        private void RestoreSavedProfileBanner(string? tag = null)
+        private void RestoreSavedProfileBanner(string? tag = null, ProfileVerificationResult? verification = null)
         {
             string savedTag = tag ?? HistoryManager.Load().ActiveProfileTag ?? "";
             switch (savedTag)
@@ -498,16 +592,20 @@ namespace WinPulseOptimizer
                     HighlightActiveProfileButton(null, "CONFIGURACIÓN ORIGINAL", "Se recuperaron los valores previos a los cambios registrados.", "ORIGINAL");
                     return;
                 case "JUGAR":
-                    HighlightActiveProfileButton(BtnProfileJugar, "JUGAR (MÁXIMO RENDIMIENTO)", OptimizerEngine.GetProfilePowerSummary(UsageProfile.GamingMax), "JUGAR");
+                    HighlightActiveProfileButton(BtnProfileJugar, "JUGAR (MÁXIMO RENDIMIENTO)",
+                        FormatProfileBannerDescription(UsageProfile.GamingMax, "JUGAR", verification), "JUGAR", verification);
                     return;
                 case "ESTUDIAR":
-                    HighlightActiveProfileButton(BtnProfileEstudiar, "ESTUDIAR / TRABAJAR", OptimizerEngine.GetProfilePowerSummary(UsageProfile.StudyWork), "ESTUDIAR");
+                    HighlightActiveProfileButton(BtnProfileEstudiar, "ESTUDIAR / TRABAJAR",
+                        FormatProfileBannerDescription(UsageProfile.StudyWork, "ESTUDIAR", verification), "ESTUDIAR", verification);
                     return;
                 case "CHILL":
-                    HighlightActiveProfileButton(BtnProfileChill, "ESTAR CHILL", OptimizerEngine.GetProfilePowerSummary(UsageProfile.ChillBattery), "CHILL");
+                    HighlightActiveProfileButton(BtnProfileChill, "ESTAR CHILL",
+                        FormatProfileBannerDescription(UsageProfile.ChillBattery, "CHILL", verification), "CHILL", verification);
                     return;
                 case "FABRICA":
-                    HighlightActiveProfileButton(BtnProfileFabrica, "DE FÁBRICA", OptimizerEngine.GetProfilePowerSummary(UsageProfile.FactoryDefault), "FABRICA");
+                    HighlightActiveProfileButton(BtnProfileFabrica, "DE FÁBRICA",
+                        FormatProfileBannerDescription(UsageProfile.FactoryDefault, "FABRICA", verification), "FABRICA", verification);
                     return;
             }
 
@@ -599,7 +697,7 @@ namespace WinPulseOptimizer
         }
 
         private bool CanReadLiveMetrics => _automationTimer.IsEnabled && _benchmarkCancellation == null &&
-            IsVisible && WindowState != WindowState.Minimized && (IsActive || _detectedGame == null);
+            IsVisible && DashboardMetrics.IsVisible && WindowState != WindowState.Minimized && (IsActive || _detectedGame == null);
 
         private void UpdateLiveMetricsSchedule()
         {
@@ -612,6 +710,7 @@ namespace WinPulseOptimizer
             var interval = IsActive ? TimeSpan.FromMilliseconds(1500) : TimeSpan.FromSeconds(6);
             if (_liveMetricsTimer.Interval != interval) _liveMetricsTimer.Interval = interval;
             if (_liveMetricsTimer.IsEnabled) return;
+            _nextGpuReadingAt = 0;
             _liveMetricsTimer.Start();
             UpdateLiveMetrics();
         }
@@ -622,8 +721,11 @@ namespace WinPulseOptimizer
             _readingLiveMetrics = true;
             try
             {
-                var snap = await Task.Run(() => HardwareMonitor.CaptureSnapshot(OptimizerEngine.GetActivePowerSchemeName()));
-                if (CanReadLiveMetrics) RenderLiveMetrics(snap, includesGpu: true);
+                long now = Environment.TickCount64;
+                bool includeGpu = now >= _nextGpuReadingAt;
+                if (includeGpu) _nextGpuReadingAt = now + 6_000;
+                var snap = await Task.Run(() => HardwareMonitor.CaptureSnapshot(OptimizerEngine.GetActivePowerSchemeName(), includeGpu));
+                if (CanReadLiveMetrics) RenderLiveMetrics(snap, includesGpu: includeGpu);
             }
             catch (Exception)
             {
@@ -690,11 +792,20 @@ namespace WinPulseOptimizer
             return _beforeSnapshot;
         }
 
-        private void ShowChangeCard(string heading, string summary, string detail)
+        private void ShowChangeCard(string heading, string summary, string detail, string titleBrush = "AccentBrush")
         {
+            TxtAfterTitle.SetResourceReference(TextBlock.ForegroundProperty, titleBrush);
             TxtAfterTitle.Text = heading;
             TxtAfterMain.Text = summary;
             TxtAfterSub.Text = detail;
+        }
+
+        private void ShowStartupSnapshot(SystemSnapshot snapshot, string? status = null,
+            string heading = "ESTADO AL ABRIR", string titleBrush = "AccentBrush")
+        {
+            string detail = $"Procesos en la captura: {snapshot.ProcessCount} · {snapshot.Timestamp:HH:mm:ss} · {snapshot.PowerScheme}";
+            if (status != null) detail = $"{status}\n{detail}";
+            ShowChangeCard(heading, $"RAM: {snapshot.UsedRamGb:0.00} GB\nCPU: {snapshot.CpuPercent:0.0}%", detail, titleBrush);
         }
 
         private async Task CaptureAfterAndCompareAsync(string actionTitle, string explanation, string sectionName,
@@ -802,8 +913,28 @@ namespace WinPulseOptimizer
         {
             if (_loading || sender is not System.Windows.Controls.CheckBox cb ||
                 !TweakInfoMap.TryGetValue(cb.Name, out var meta)) return;
+            if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
 
             bool isOn = cb.IsChecked == true;
+            bool alreadyApplied;
+            SetSystemChangeBusy(true);
+            try
+            {
+                alreadyApplied = await Task.Run(() => OptimizerEngine.IsTweakInState(cb.Name, isOn));
+            }
+            catch { alreadyApplied = false; }
+            finally { SetSystemChangeBusy(false); }
+
+            if (alreadyApplied)
+            {
+                string stateWord = isOn ? "activado" : "desactivado";
+                ShowChangeCard("AJUSTE YA APLICADO", $"{meta.Title} ya estaba {stateWord}",
+                    "Windows ya tenía este ajuste configurado. No hizo falta realizar cambios.", "SuccessBrush");
+                Log($"{meta.Title} ya estaba {stateWord}; no se realizaron cambios.");
+                await RefreshVerifiedControlsAsync();
+                return;
+            }
+
             await ApplySystemChangeAsync(
                 $"{(isOn ? "Activaste" : "Desactivaste")}: {meta.Title}",
                 meta.PlainDesc, meta.SectionName, meta.TabIndex, meta.RowName, new(SystemAction.Tweak, cb.Name, isOn), "CUSTOM");
@@ -812,37 +943,85 @@ namespace WinPulseOptimizer
         private async void BtnJugar_Click(object sender, RoutedEventArgs e) =>
             await ApplyGamingModeAsync("Activaste el plan Jugar (Máximo Rendimiento)", "Ajusta la energía y las opciones de juego de WinPulse.");
 
-        private Task<bool> ApplyGamingModeAsync(string title, string explanation, bool automatic = false) =>
+        private Task<bool> ApplyGamingModeAsync(string title, string explanation, bool automatic = false, bool skipVerification = false) =>
             ApplyProfileAsync(title, explanation, UsageProfile.GamingMax, "JUGAR",
-                DefaultProfileAdjustments(UsageProfile.GamingMax), automatic);
+                DefaultProfileAdjustments(UsageProfile.GamingMax), automatic, skipVerification);
 
         private async void BtnEstudiar_Click(object sender, RoutedEventArgs e) =>
             await ApplyStudyModeAsync("Activaste el plan Estudiar / Trabajar", "Aplica los ajustes de energía para uso diario.");
 
-        private Task ApplyStudyModeAsync(string title, string explanation) =>
+        private Task<bool> ApplyStudyModeAsync(string title, string explanation, bool skipVerification = false) =>
             ApplyProfileAsync(title, explanation, UsageProfile.StudyWork, "ESTUDIAR",
-                DefaultProfileAdjustments(UsageProfile.StudyWork));
+                DefaultProfileAdjustments(UsageProfile.StudyWork), skipVerification: skipVerification);
 
         private async void BtnChill_Click(object sender, RoutedEventArgs e) =>
             await ApplyChillModeAsync("Activaste el plan Estar Chill", "Aplica los ajustes de ahorro de energía.");
 
-        private Task<bool> ApplyChillModeAsync(string title, string explanation, bool automatic = false) =>
+        private Task<bool> ApplyChillModeAsync(string title, string explanation, bool automatic = false, bool skipVerification = false) =>
             ApplyProfileAsync(title, explanation, UsageProfile.ChillBattery, "CHILL",
-                DefaultProfileAdjustments(UsageProfile.ChillBattery), automatic);
+                DefaultProfileAdjustments(UsageProfile.ChillBattery), automatic, skipVerification);
 
-        internal static TweakState DefaultProfileAdjustments(UsageProfile profile) => profile switch
+        internal static TweakState DefaultProfileAdjustments(UsageProfile profile) =>
+            OptimizerEngine.DefaultProfileAdjustments(profile);
+
+        private async Task<bool> ApplyProfileAsync(string title, string explanation, UsageProfile profile, string tag,
+            TweakState values, bool automatic = false, bool skipVerification = false)
         {
-            UsageProfile.GamingMax => new(true, true, true, true, true, true, true, true, true, true, true, true),
-            UsageProfile.StudyWork => new(true, true, true, false, true, false, true, false, false, true, true, false),
-            UsageProfile.ChillBattery => new(true, true, true, false, true, false, false, false, false, false, false, true),
-            _ => throw new ArgumentOutOfRangeException(nameof(profile))
-        };
+            var action = profile == UsageProfile.FactoryDefault ? SystemAction.FactoryProfile : SystemAction.Profile;
+            bool trimMemory = !automatic && profile != UsageProfile.FactoryDefault;
+            if (automatic || skipVerification)
+            {
+                return await ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
+                    new(action, Power: profile, Values: values),
+                    tag, compareMetrics: true, trimMemory: trimMemory, automatic: automatic);
+            }
 
-        private Task<bool> ApplyProfileAsync(string title, string explanation, UsageProfile profile, string tag,
-            TweakState values, bool automatic = false) =>
-            ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
-                new(SystemAction.Profile, Power: profile, Values: values),
-                tag, compareMetrics: true, trimMemory: !automatic, automatic: automatic);
+            if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return false;
+
+            ProfileVerificationResult? verification = null;
+            SetSystemChangeBusy(true);
+            try
+            {
+                verification = await Task.Run(() => OptimizerEngine.VerifyProfileState(profile, values));
+            }
+            catch (Exception ex)
+            {
+                Log($"No se pudo comprobar el estado previo del plan. {ex.Message}");
+            }
+            finally
+            {
+                SetSystemChangeBusy(false);
+            }
+
+            if (verification is { IsFullyActive: true })
+            {
+                string displayName = GetProfileDisplayName(tag);
+                bool sameBanner = _activeProfileTag == tag && !_savedProfileNeedsReapply;
+                RestoreSavedProfileBanner(tag, verification);
+                _manualAutomationOverride = true;
+
+                string mainText = sameBanner ? $"«{displayName}» ya está activo" : $"«{displayName}» activado sin cambios";
+                string detailText = sameBanner
+                    ? "Todos sus ajustes ya coinciden con la configuración actual de Windows. No hace falta volver a aplicarlo."
+                    : "Windows ya tenía todos los ajustes de este plan aplicados. No hizo falta modificar nada.";
+                if (verification.PendingRestart)
+                    detailText += " Algunos ajustes previos surtirán efecto al reiniciar Windows.";
+
+                ShowChangeCard("PLAN YA AJUSTADO", mainText, detailText, "SuccessBrush");
+                Log(sameBanner
+                    ? $"El plan «{displayName}» ya estaba ajustado en Windows; no se realizaron cambios."
+                    : $"Activaste «{displayName}». Windows ya tenía todos sus ajustes aplicados.");
+                if (!IsVisible)
+                    _trayIcon?.ShowBalloonTip(2500, "WinPulse Pro", $"El plan «{displayName}» ya está aplicado.", WinForms.ToolTipIcon.Info);
+
+                await RefreshVerifiedControlsAsync();
+                return true;
+            }
+
+            return await ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
+                new(action, Power: profile, Values: values),
+                tag, compareMetrics: true, trimMemory: trimMemory, automatic: false);
+        }
 
         private async void BtnPurgeRam_Click(object sender, RoutedEventArgs e)
         {
@@ -889,9 +1068,9 @@ namespace WinPulseOptimizer
             await ApplyFactoryProfileAsync("Aplicaste los valores predefinidos de WinPulse",
                 "Selecciona los valores predefinidos del botón De fábrica.");
 
-        private Task<bool> ApplyFactoryProfileAsync(string title, string explanation) =>
-            ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
-                new(SystemAction.FactoryProfile), "FABRICA", compareMetrics: true);
+        private Task<bool> ApplyFactoryProfileAsync(string title, string explanation, bool skipVerification = false) =>
+            ApplyProfileAsync(title, explanation, UsageProfile.FactoryDefault, "FABRICA",
+                DefaultProfileAdjustments(UsageProfile.FactoryDefault), skipVerification: skipVerification);
 
         private void BtnRefreshProcs_Click(object sender, RoutedEventArgs e)
         {
@@ -1002,6 +1181,7 @@ namespace WinPulseOptimizer
             if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return false;
             SetSystemChangeBusy(true);
             string previousProfile = _activeProfileTag;
+            bool resultRecorded = false;
             Log("Aplicando y verificando el cambio.");
             ShowChangeCard("CAMBIO EN CURSO", "Verificando con Windows…", title);
             try
@@ -1017,6 +1197,10 @@ namespace WinPulseOptimizer
                     ReplaceAutomation = !automatic && profile != null, ReportProfile = control == "CardProfiles"
                 }, explanation);
                 var verifiedSettings = result.Settings ?? [];
+                if (_usageStatistics.IsEnabled)
+                    _usageStatistics.RecordChange(profile, result.Changed,
+                        verifiedSettings.Count(setting => setting.Status == ProfileSettingResult.BlockedPlanStatus));
+                resultRecorded = true;
                 if (!automatic && profile != null) _manualAutomationOverride = true;
                 string restartNotice = result.Restart ? DescribePendingRestart(verifiedSettings) : "";
                 string status = result.Changed
@@ -1067,8 +1251,11 @@ namespace WinPulseOptimizer
             }
             catch (Exception ex)
             {
-                ShowChangeCard("RESULTADO DEL CAMBIO", "No se completó el cambio", "Consulta el detalle en Historial.");
                 var settings = (ex as ProfileChangeException)?.Settings;
+                if (!resultRecorded && _usageStatistics.IsEnabled)
+                    _usageStatistics.RecordChange(profile, null,
+                        settings?.Count(setting => setting.Status == ProfileSettingResult.BlockedPlanStatus) ?? 0);
+                ShowChangeCard("RESULTADO DEL CAMBIO", "No se completó el cambio", "Consulta el detalle en Historial.");
                 RecordAction("No se completó el cambio", title, section, tabIndex, control, ex.Message,
                     settings is { Length: > 0 } ? settings : null);
                 Log($"No se completó el cambio. {ex.Message}");

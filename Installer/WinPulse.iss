@@ -25,13 +25,20 @@ WizardStyle=modern
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Files]
-Source: "{#RuntimeInstaller}"; DestName: "WindowsDesktopRuntime-x64.exe"; Flags: dontcopy
+#ifdef OfflineRuntimeInstaller
+Source: "{#OfflineRuntimeInstaller}"; DestName: "WindowsDesktopRuntime-x64.exe"; Flags: dontcopy
+#endif
 Source: "{#AppExecutable}"; DestName: "WinPulseOptimizer.exe"; Flags: dontcopy
 
 [Run]
 Filename: "{commonpf64}\WinPulse Pro\WinPulseOptimizer.exe"; WorkingDir: "{commonpf64}\WinPulse Pro"; Description: "Abrir WinPulse Pro"; Flags: postinstall nowait runasoriginaluser skipifsilent
 
 [Code]
+#ifndef OfflineRuntimeInstaller
+var
+  RuntimeDownloadPage: TDownloadWizardPage;
+#endif
+
 function HasRuntimeFiles(const FrameworkName, RequiredFile: String): Boolean;
 var
   FrameworkRoot, Version: String;
@@ -71,8 +78,32 @@ end;
 
 procedure InitializeWizard;
 begin
+#ifdef OfflineRuntimeInstaller
   WizardForm.WelcomeLabel2.Caption :=
     'Este asistente instalará o actualizará WinPulse Pro. Si Windows necesita .NET 10 Desktop Runtime x64, el asistente instalará la copia oficial de Microsoft incluida en este paquete.';
+#else
+  WizardForm.WelcomeLabel2.Caption :=
+    'Este asistente instalará o actualizará WinPulse Pro. Si Windows necesita .NET 10 Desktop Runtime x64, el asistente lo descargará desde Microsoft.';
+  RuntimeDownloadPage := CreateDownloadPage('Preparando WinPulse Pro',
+    'Descargando el runtime oficial de Microsoft…', nil);
+  RuntimeDownloadPage.ShowBaseNameInsteadOfUrl := True;
+#endif
+end;
+
+procedure PrepareDesktopRuntimeFile;
+begin
+#ifdef OfflineRuntimeInstaller
+  ExtractTemporaryFile('WindowsDesktopRuntime-x64.exe');
+#else
+  RuntimeDownloadPage.Clear;
+  RuntimeDownloadPage.Add('{#RuntimeUrl}', 'WindowsDesktopRuntime-x64.exe', '{#RuntimeSha256}');
+  RuntimeDownloadPage.Show;
+  try
+    RuntimeDownloadPage.Download;
+  finally
+    RuntimeDownloadPage.Hide;
+  end;
+#endif
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -84,8 +115,8 @@ begin
   try
     if not DesktopRuntimeAvailable then
     begin
+      PrepareDesktopRuntimeFile;
       WizardForm.PreparingLabel.Caption := 'Instalando Microsoft .NET 10 Desktop Runtime x64…';
-      ExtractTemporaryFile('WindowsDesktopRuntime-x64.exe');
       if not Exec(ExpandConstant('{tmp}\WindowsDesktopRuntime-x64.exe'), '/install /quiet /norestart',
                   ExpandConstant('{sys}'), SW_SHOWNORMAL, ewWaitUntilTerminated, ExitCode) then
       begin
