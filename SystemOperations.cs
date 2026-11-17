@@ -7,7 +7,7 @@ namespace WinPulseOptimizer;
 
 internal enum SystemAction
 {
-    Profile, FactoryProfile, Tweak, StartupApp, AutoStart, Ethernet, Restore, RestoreAutomatic, RestorePoint, DiskMaintenance
+    Profile, FactoryProfile, PowerScheme, Tweak, StartupApp, AutoStart, Ethernet, Restore, RestoreAutomatic, RestorePoint, DiskMaintenance
 }
 
 internal sealed record SystemRequest(SystemAction Action, string? Name = null, bool Enabled = false,
@@ -52,6 +52,8 @@ internal static class SystemOperations
                     SystemAction.Profile when request.Power is UsageProfile.GamingMax or UsageProfile.StudyWork or UsageProfile.ChillBattery
                         && request.Values != null => () => ApplyProfile(request.Power, request.Values),
                     SystemAction.FactoryProfile => OptimizerEngine.RestoreDefaults,
+                    SystemAction.PowerScheme when request.Adapter != Guid.Empty => () =>
+                        OptimizerEngine.SetActivePowerScheme(request.Adapter),
                     SystemAction.Tweak => GetTweak(request.Name, request.Enabled),
                     SystemAction.StartupApp => () => ApplyStartupSetting(request),
                     SystemAction.AutoStart => () => OptimizerEngine.SetAutoStartSilent(request.Enabled),

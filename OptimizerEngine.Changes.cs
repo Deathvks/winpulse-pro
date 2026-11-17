@@ -374,6 +374,10 @@ namespace WinPulseOptimizer
         private static extern uint PowerGetActiveScheme(IntPtr root, out IntPtr scheme);
 
         [DllImport("powrprof.dll")]
+        private static extern uint PowerEnumerate(IntPtr rootPowerKey, IntPtr schemeGuid, IntPtr subGroupOfPowerSettingsGuid,
+            uint accessFlags, uint index, IntPtr buffer, ref uint bufferSize);
+
+        [DllImport("powrprof.dll")]
         private static extern uint PowerSetActiveScheme(IntPtr root, in Guid scheme);
 
         [DllImport("powrprof.dll")]
@@ -427,6 +431,32 @@ namespace WinPulseOptimizer
             VerifyWindowsResult(PowerGetActiveScheme(IntPtr.Zero, out var pointer), "Leer el plan activo");
             try { return Marshal.PtrToStructure<Guid>(pointer); }
             finally { LocalFree(pointer); }
+        }
+
+        public static WindowsPowerPlanItem[] GetPowerSchemes()
+        {
+            Guid active;
+            try { active = ActivePlan(); }
+            catch (IOException) { active = Guid.Empty; }
+
+            var plans = new List<WindowsPowerPlanItem>();
+            IntPtr buffer = Marshal.AllocHGlobal(16);
+            try
+            {
+                for (uint index = 0; ; index++)
+                {
+                    uint size = 16;
+                    uint status = PowerEnumerate(IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 16, index, buffer, ref size);
+                    if (status == 259) break;
+                    if (status != 0) break;
+                    var id = Marshal.PtrToStructure<Guid>(buffer);
+                    string name = ReadPlanName(id) ?? id.ToString();
+                    plans.Add(new WindowsPowerPlanItem(id, name, id == active));
+                }
+            }
+            finally { Marshal.FreeHGlobal(buffer); }
+
+            return plans.OrderByDescending(p => p.IsActive).ThenBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
         }
 
         private static void ActivatePlan(Guid guid)

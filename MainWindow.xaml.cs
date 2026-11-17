@@ -102,7 +102,7 @@ namespace WinPulseOptimizer
                 if (_forceExit) return;
                 var startup = await stateReading;
                 RenderSystemInfo(startup.Info);
-                RenderPowerDiagnostics(startup.Power, startup.PowerRestricted);
+                RenderPowerDiagnostics(startup.Power, startup.PowerRestricted, startup.PowerPlans);
                 SyncSwitchesFromSystem(startup.State);
                 LstTopProcesses.ItemsSource = startup.Processes;
                 LstStartupApps.ItemsSource = startup.StartupApps;
@@ -148,14 +148,15 @@ namespace WinPulseOptimizer
         }
 
         private sealed record InitialState(AuditStore Saved, SystemInfo Info, PowerPlanDetails Power, bool PowerRestricted,
-            TweakState State, SystemSnapshot Snapshot, List<ProcessItem> Processes, List<StartupAppItem> StartupApps,
-            ProfileVerificationResult? ProfileVerification);
+            WindowsPowerPlanItem[] PowerPlans, TweakState State, SystemSnapshot Snapshot, List<ProcessItem> Processes,
+            List<StartupAppItem> StartupApps, ProfileVerificationResult? ProfileVerification);
 
         private static InitialState ReadInitialState()
         {
             var saved = HistoryManager.Load();
             var info = HardwareMonitor.GetSystemInfo();
             var power = OptimizerEngine.GetPowerPlanDetails();
+            var powerPlans = OptimizerEngine.GetPowerSchemes();
             var state = OptimizerEngine.ReadCurrentState();
             var snapshot = HardwareMonitor.CaptureSnapshot(power.EffectiveModeLabel, includeGpu: false);
             var processes = HardwareMonitor.GetTopMemoryProcesses(12);
@@ -163,7 +164,7 @@ namespace WinPulseOptimizer
             var profileVerification = TryParseUsageProfile(saved.ActiveProfileTag ?? "", out var savedProfile)
                 ? OptimizerEngine.VerifyProfileState(savedProfile, DefaultProfileAdjustments(savedProfile))
                 : null;
-            return new(saved, info, power, OptimizerEngine.ReadEnforcedPowerPlan().HasValue, state, snapshot,
+            return new(saved, info, power, OptimizerEngine.ReadEnforcedPowerPlan().HasValue, powerPlans, state, snapshot,
                 processes, startupApps, profileVerification);
         }
 
@@ -563,7 +564,14 @@ namespace WinPulseOptimizer
                 Log("No se pudo guardar el perfil seleccionado para el próximo inicio.");
         }
 
-        private void RenderPowerDiagnostics(PowerPlanDetails pd, bool powerRestricted)
+        private void BtnToggleProfileGuide_Click(object sender, RoutedEventArgs e)
+        {
+            bool open = ProfileGuidePanel.Visibility != Visibility.Visible;
+            ProfileGuidePanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            BtnToggleProfileGuide.Content = open ? "Ocultar detalle de perfiles" : "¿Qué cambia cada perfil?";
+        }
+
+        private void RenderPowerDiagnostics(PowerPlanDetails pd, bool powerRestricted, WindowsPowerPlanItem[]? plans = null)
         {
             string baseClean = CleanPlanName(pd.ActivePlanName);
 
@@ -578,6 +586,20 @@ namespace WinPulseOptimizer
             TxtPwrDisplay.Text = pd.DisplayTimeout;
             TxtPwrBattery.Text = pd.BatteryAction;
             TxtPwrOverlay.Text = pd.WindowsPowerOverlay;
+
+            if (plans != null)
+            {
+                CmbPowerPlans.ItemsSource = plans;
+                CmbPowerPlans.SelectedItem = plans.FirstOrDefault(p => p.IsActive) ?? plans.FirstOrDefault();
+                CmbPowerPlans.IsEnabled = !powerRestricted && plans.Length > 0;
+                BtnApplyPowerPlan.IsEnabled = !powerRestricted && plans.Length > 1;
+                TxtPowerPlanRestriction.Visibility = powerRestricted ? Visibility.Visible : Visibility.Collapsed;
+                if (powerRestricted)
+                {
+                    TxtPowerPlanRestriction.Text =
+                        $"Windows fija el plan «{baseClean}» mediante una directiva del sistema (ActivePowerScheme). Mientras exista esa directiva, Windows bloquea el cambio de plan.";
+                }
+            }
         }
 
         private void RestoreSavedProfileBanner(string? tag = null, ProfileVerificationResult? verification = null)
@@ -872,12 +894,33 @@ namespace WinPulseOptimizer
             try
             {
                 var reading = await Task.Run(() => (Power: OptimizerEngine.GetPowerPlanDetails(),
-                    Restricted: OptimizerEngine.ReadEnforcedPowerPlan().HasValue));
+                    Restricted: OptimizerEngine.ReadEnforcedPowerPlan().HasValue,
+                    Plans: OptimizerEngine.GetPowerSchemes()));
                 if (_forceExit || _systemChangeInProgress) return;
-                RenderPowerDiagnostics(reading.Power, reading.Restricted);
-                Log("Opciones avanzadas de energía actualizadas.");
+                RenderPowerDiagnostics(reading.Power, reading.Restricted, reading.Plans);
+                Log("Planes y opciones avanzadas de energía actualizados.");
             }
             catch (Exception ex) { if (!_forceExit) Log($"No se pudo leer el plan de energía. {ex.Message}"); }
+        }
+
+        private async void BtnApplyPowerPlan_Click(object sender, RoutedEventArgs e)
+        {
+            if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
+            if (CmbPowerPlans.SelectedItem is not WindowsPowerPlanItem selected) return;
+
+            if (selected.IsActive)
+            {
+                ShowChangeCard("AJUSTE YA APLICADO", $"El plan «{selected.Name}» ya está activo",
+                    "Windows ya está usando este plan de energía. No hizo falta realizar cambios.", "SuccessBrush");
+                Log($"El plan de energía «{selected.Name}» ya estaba activo; no se realizaron cambios.");
+                return;
+            }
+
+            await ApplySystemChangeAsync(
+                $"Cambiaste el plan de energía a {selected.Name}",
+                "Cambia el plan de energía activo en Windows.",
+                "Pestaña 0: Energía y perfiles", 0, "CardPowerPlans",
+                new(SystemAction.PowerScheme, Adapter: selected.Id), "CUSTOM");
         }
 
         private void UpdatePowerBadge()
@@ -1332,12 +1375,13 @@ namespace WinPulseOptimizer
             {
                 var refreshed = await Task.Run(() => (State: OptimizerEngine.ReadCurrentState(),
                     Apps: OptimizerEngine.GetStartupApps(), AutoStart: OptimizerEngine.IsAutoStartEnabled(),
-                    Power: OptimizerEngine.GetPowerPlanDetails(), Restricted: OptimizerEngine.ReadEnforcedPowerPlan().HasValue));
+                    Power: OptimizerEngine.GetPowerPlanDetails(), Restricted: OptimizerEngine.ReadEnforcedPowerPlan().HasValue,
+                    Plans: OptimizerEngine.GetPowerSchemes()));
                 _loading = true;
                 SyncSwitchesFromSystem(refreshed.State);
                 LstStartupApps.ItemsSource = refreshed.Apps;
                 SwStartWithWindows.IsChecked = refreshed.AutoStart;
-                RenderPowerDiagnostics(refreshed.Power, refreshed.Restricted);
+                RenderPowerDiagnostics(refreshed.Power, refreshed.Restricted, refreshed.Plans);
             }
             catch (Exception ex) { Log($"No se pudo actualizar la lectura del sistema. {ex.Message}"); }
             finally { _loading = false; }

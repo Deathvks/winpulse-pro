@@ -77,8 +77,7 @@ public static partial class OptimizerEngine
 
         Guid? enforced = ReadEnforcedPowerPlan();
         bool modernStandby = SupportsModernStandby();
-        bool wantsBalanced = modernStandby || profile == UsageProfile.FactoryDefault;
-        bool balancedAvailable = !enforced.HasValue && wantsBalanced && PlanExists(Guid.Parse(GuidBalanced));
+        bool balancedAvailable = !enforced.HasValue && PlanExists(Guid.Parse(GuidBalanced));
         Guid expectedPlan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable);
         string? expectedPlanDisplay = ReadReportValue(() => FormatReportPlan(expectedPlan));
         bool planBlocked = IsSettingBlockedInStore(store, "activePlan", "", expectedPlanDisplay);

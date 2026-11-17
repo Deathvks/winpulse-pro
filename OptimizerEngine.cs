@@ -42,6 +42,11 @@ namespace WinPulseOptimizer
         bool SuspendHeavyServices, bool DisableUsbPciePowerSave, bool DisableNagle, bool LimitBackgroundApps
     );
 
+    public sealed record WindowsPowerPlanItem(Guid Id, string Name, bool IsActive)
+    {
+        public string Label => IsActive ? $"{Name} (Activo)" : Name;
+    }
+
     internal sealed record MemoryTrimResult(int Adjusted, int Skipped, ulong? BeforeBytes, ulong? AfterBytes);
 
     public static partial class OptimizerEngine
@@ -53,6 +58,9 @@ namespace WinPulseOptimizer
         private const string LegacyMapsService = "MapsBroker";
 
         private const string GuidBalanced = "381b4222-f694-41f0-9685-ff5bb260df2e";
+        private const string GuidHighPerformance = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
+        private const string GuidUltimatePerformance = "e9a42b02-d5df-448d-aa00-03f14749eb61";
+        private const string GuidPowerSaver = "a1841308-3541-4fab-bc81-f71556f20b4a";
         private const string ProcessorBoostSetting = "PERFBOOSTMODE";
         private const uint AggressiveProcessorBoost = 2;
 
@@ -187,21 +195,44 @@ namespace WinPulseOptimizer
         }
 
         internal static Guid ChooseWritablePowerPlan(UsageProfile profile, Guid active, bool modernStandby,
-            bool policyEnforced, bool balancedAvailable) =>
-            !policyEnforced && balancedAvailable && (modernStandby || profile == UsageProfile.FactoryDefault)
-                ? Guid.Parse(GuidBalanced) : active;
+            bool policyEnforced, bool balancedAvailable)
+        {
+            if (policyEnforced) return active;
+            if (modernStandby) return balancedAvailable ? Guid.Parse(GuidBalanced) : active;
+            if (profile == UsageProfile.GamingMax)
+            {
+                var ultimate = Guid.Parse(GuidUltimatePerformance);
+                if (PlanExists(ultimate)) return ultimate;
+                var highPerf = Guid.Parse(GuidHighPerformance);
+                if (PlanExists(highPerf)) return highPerf;
+            }
+            else if (profile == UsageProfile.ChillBattery)
+            {
+                var saver = Guid.Parse(GuidPowerSaver);
+                if (PlanExists(saver)) return saver;
+            }
+            return balancedAvailable ? Guid.Parse(GuidBalanced) : active;
+        }
+
+        public static void SetActivePowerScheme(Guid planId)
+        {
+            if (ReadEnforcedPowerPlan().HasValue)
+                throw new InvalidOperationException("Windows fija el plan de energía mediante una directiva y no permite cambiarlo.");
+            if (!PlanExists(planId))
+                throw new IOException("El plan de energía seleccionado ya no está disponible en Windows.");
+            ActivatePlan(planId);
+        }
 
         public static Guid? ApplyUsagePowerScheme(UsageProfile profile)
         {
             Guid active = ActivePlan();
             Guid? enforced = ReadEnforcedPowerPlan();
             bool modernStandby = SupportsModernStandby();
-            bool wantsBalanced = modernStandby || profile == UsageProfile.FactoryDefault;
-            bool balancedAvailable = !enforced.HasValue && wantsBalanced && PlanExists(Guid.Parse(GuidBalanced));
+            bool balancedAvailable = !enforced.HasValue && PlanExists(Guid.Parse(GuidBalanced));
             Guid plan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable);
             if (enforced.HasValue)
                 _operationNotices?.Add($"La directiva de Windows mantiene el plan {ReadPlanName(active) ?? active.ToString()}.");
-            else if (wantsBalanced && !balancedAvailable)
+            else if ((modernStandby || profile is UsageProfile.FactoryDefault or UsageProfile.StudyWork) && !balancedAvailable)
                 _operationNotices?.Add("Equilibrado no está disponible. Se conserva el plan actual.");
             bool planBlocked = !TryActivateProfilePlan(plan);
             if (planBlocked)

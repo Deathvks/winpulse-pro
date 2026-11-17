@@ -97,25 +97,67 @@
 
         <!-- Selector de Planes -->
         <Border Grid.Row="2" Grid.ColumnSpan="3" x:Name="CardProfiles" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="9" Padding="13" Margin="0,0,0,12">
-            <DockPanel LastChildFill="True">
-                <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-                    <Button x:Name="BtnProfileJugar" Content="Jugar (Máximo)" Style="{StaticResource ProfileBtn}" Click="BtnJugar_Click" Margin="0,2,6,2"/>
-                    <Button x:Name="BtnProfileEstudiar" Content="Estudiar / Trabajar" Style="{StaticResource ProfileBtn}" Click="BtnEstudiar_Click" Margin="0,2,6,2"/>
-                    <Button x:Name="BtnProfileChill" Content="Estar Chill" Style="{StaticResource ProfileBtn}" Click="BtnChill_Click" Margin="0,2,6,2"/>
-                    <Button x:Name="BtnProfileFabrica" Style="{StaticResource ProfileBtn}" Click="BtnReset_Click" Margin="0,2,0,2"
-                            AutomationProperties.Name="De fábrica">
-                        <ContentControl Style="{StaticResource IconLabel}" Content="De fábrica" Tag="{StaticResource HistoryGlyph}"/>
-                    </Button>
-                </WrapPanel>
-                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                    <DockPanel>
-                        <Ellipse x:Name="DotActiveProfile" DockPanel.Dock="Left" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,5,8,0" VerticalAlignment="Top"/>
-                        <TextBlock x:Name="TxtActiveModeLabel" DockPanel.Dock="Left" Text="PLAN ACTIVO:" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource QuietBrush}" Margin="0,2,5,0" VerticalAlignment="Top"/>
-                        <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
-                    </DockPanel>
-                    <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                </StackPanel>
-            </DockPanel>
+            <StackPanel>
+                <DockPanel LastChildFill="True">
+                    <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                        <Button x:Name="BtnProfileJugar" Content="Jugar (Máximo)" Style="{StaticResource ProfileBtn}" Click="BtnJugar_Click" Margin="0,2,6,2"
+                                ToolTip="CPU al 100 % enchufado/batería, turbo agresivo, Modo Juego, HAGS, temporizador 0,5 ms, núcleos activos, pausa servicios pesados y activa Mejor rendimiento."/>
+                        <Button x:Name="BtnProfileEstudiar" Content="Estudiar / Trabajar" Style="{StaticResource ProfileBtn}" Click="BtnEstudiar_Click" Margin="0,2,6,2"
+                                ToolTip="CPU 5–100 %, modo Equilibrado, reanuda servicios pausados, Modo Juego, HAGS, ventana sin bordes, prioridad activa y ajuste TCP."/>
+                        <Button x:Name="BtnProfileChill" Content="Estar Chill" Style="{StaticResource ProfileBtn}" Click="BtnChill_Click" Margin="0,2,6,2"
+                                ToolTip="CPU máx. 80 % enchufado y 70 % batería, modo Eficiencia energética, bloquea apps en segundo plano y reanuda servicios pausados."/>
+                        <Button x:Name="BtnProfileFabrica" Style="{StaticResource ProfileBtn}" Click="BtnReset_Click" Margin="0,2,0,2"
+                                AutomationProperties.Name="De fábrica"
+                                ToolTip="Restaura los valores predefinidos de Windows (plan Equilibrado, CPU 5–100 %, sin ajustes agresivos ni servicios pausados).">
+                            <ContentControl Style="{StaticResource IconLabel}" Content="De fábrica" Tag="{StaticResource HistoryGlyph}"/>
+                        </Button>
+                    </WrapPanel>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                        <DockPanel>
+                            <Ellipse x:Name="DotActiveProfile" DockPanel.Dock="Left" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,5,8,0" VerticalAlignment="Top"/>
+                            <TextBlock x:Name="TxtActiveModeLabel" DockPanel.Dock="Left" Text="PLAN ACTIVO:" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource QuietBrush}" Margin="0,2,5,0" VerticalAlignment="Top"/>
+                            <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                        </DockPanel>
+                        <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                        <Button x:Name="BtnToggleProfileGuide" Content="¿Qué cambia cada perfil?" Style="{StaticResource LinkBtn}"
+                                HorizontalAlignment="Left" MinHeight="22" Padding="8,2" FontSize="11.5" Margin="0,6,0,0"
+                                Click="BtnToggleProfileGuide_Click"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <Border x:Name="ProfileGuidePanel" Visibility="Collapsed" Margin="0,12,0,0" Padding="0,12,0,0"
+                        BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="0,1,0,0">
+                    <UniformGrid Columns="4">
+                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="0,0,6,0">
+                            <StackPanel>
+                                <ContentControl Content="Jugar (Máximo)" Tag="{StaticResource GameGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                <TextBlock Text="CPU al 100 %, turbo agresivo, Modo Juego, HAGS, temporizador 0,5 ms, núcleos activos, prioridad MMCSS/red/USB y pausa servicios pesados." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="3,0,3,0">
+                            <StackPanel>
+                                <ContentControl Content="Estudiar / Trabajar" Tag="{StaticResource StudyGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                <TextBlock Text="CPU 5–100 %, modo Equilibrado, reanuda servicios pausados, mantiene Modo Juego, HAGS, ventana sin bordes, prioridad activa y TCP." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="3,0,3,0">
+                            <StackPanel>
+                                <ContentControl Content="Estar Chill" Tag="{StaticResource QuietGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                <TextBlock Text="Ahorro: máx. CPU 80 % enchufado y 70 % batería, modo Eficiencia energética, bloquea apps en segundo plano y reanuda servicios." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="6,0,0,0">
+                            <StackPanel>
+                                <ContentControl Content="De fábrica" Tag="{StaticResource HistoryGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                                <TextBlock Text="Valores predefinidos de Windows: plan Equilibrado, CPU 5–100 %, sin bloqueo de apps en segundo plano ni ajustes agresivos." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+                </Border>
+            </StackPanel>
         </Border>
 
         <!-- Pestañas -->
@@ -268,46 +310,32 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Resumen de los perfiles de Windows -->
-                        <Border Style="{StaticResource SectionCard}">
-                            <StackPanel>
-                                <TextBlock Text="QUÉ CAMBIA CADA PERFIL EN WINDOWS" Style="{StaticResource SectionKicker}" Margin="0,0,0,12"/>
-
-                                <UniformGrid Columns="3">
-                                    <Border Style="{StaticResource SettingRow}" Margin="0,0,6,0">
-                                        <StackPanel>
-                                            <ContentControl Content="Jugar (Máximo)" Tag="{StaticResource GameGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
-                                            <TextBlock Text="Prioriza el rendimiento y solicita turbo agresivo con corriente. Activa el Modo Juego y pausa el indexado y la telemetría cuando Windows permite esos cambios." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border Style="{StaticResource SettingRow}" Margin="3,0,3,0">
-                                        <StackPanel>
-                                            <ContentControl Content="Estudiar / Trabajar" Tag="{StaticResource StudyGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
-                                            <TextBlock Text="Solicita un rango de CPU de 5 a 100 % con corriente y reanuda los servicios que WinPulse haya pausado." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border Style="{StaticResource SettingRow}" Margin="6,0,0,0">
-                                        <StackPanel>
-                                            <ContentControl Content="Estar Chill" Tag="{StaticResource QuietGlyph}" Style="{StaticResource IconLabel}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
-                                            <TextBlock Text="Prioriza el ahorro y solicita un máximo de CPU del 80 % con corriente y del 70 % en batería, si el equipo admite esos ajustes." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Border>
-                                </UniformGrid>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Opciones Avanzadas de Energía -->
-                        <Border Style="{StaticResource SectionCard}" Margin="0">
+                        <!-- Opciones Avanzadas y Plan de Energía de Windows -->
+                        <Border x:Name="CardPowerPlans" Style="{StaticResource SectionCard}" Margin="0">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <Button DockPanel.Dock="Right" Content="Actualizar datos" Style="{StaticResource SecondaryBtn}" Padding="12,5" FontSize="11.5" Click="BtnRefreshPower_Click"/>
-                                    <TextBlock Text="CONFIGURACIÓN AVANZADA DEL PLAN DE ENERGÍA ACTUAL" Style="{StaticResource SectionKicker}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="PLAN DE ENERGÍA DE WINDOWS Y CONFIGURACIÓN AVANZADA" Style="{StaticResource SectionKicker}" VerticalAlignment="Center"/>
                                 </DockPanel>
 
                                 <TextBlock x:Name="TxtDetailPlanHeader" Text="Estado real activo: --" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                 <TextBlock x:Name="TxtDetailGpu" Text="Gráficas detectadas: --" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+
+                                <Border Style="{StaticResource SettingRow}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Cambiar plan de energía de Windows" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="Elige manualmente entre los planes de energía disponibles en tu equipo (en equipos sin directiva bloqueada, cada perfil de WinPulse también selecciona el más adecuado)."
+                                                   FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                                        <DockPanel>
+                                            <Button x:Name="BtnApplyPowerPlan" DockPanel.Dock="Right" Content="Cambiar plan" Style="{StaticResource SecondaryBtn}"
+                                                    Click="BtnApplyPowerPlan_Click" Margin="10,0,0,0"/>
+                                            <ComboBox x:Name="CmbPowerPlans" DisplayMemberPath="Label" MinHeight="32"
+                                                      AutomationProperties.Name="Planes de energía de Windows"/>
+                                        </DockPanel>
+                                        <TextBlock x:Name="TxtPowerPlanRestriction" Visibility="Collapsed" FontSize="11.5"
+                                                   Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </Border>
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
