@@ -484,11 +484,14 @@ namespace WinPulseOptimizer
                 if (row != null) row.Written = previous != plan;
                 return true;
             }
-            catch (WindowsPowerException ex) when (ex.Code == 1260 && ActivePlan() == previous)
+            catch (WindowsPowerException ex) when ((ex.Code is 1260 or 50 or 5) && ActivePlan() == previous)
             {
                 DiscardUnchangedRecords(savedBefore);
-                if (row != null) row.Note = BlockedPlan;
-                _operationNotices?.Add("La directiva de Windows bloqueó la activación (1260). Se omitieron los límites de CPU, el modo turbo y los demás ajustes del plan.");
+                if (row != null)
+                    row.Note = ex.Code == 1260 ? BlockedPlan : $"Bloqueado por Windows ({ex.Code})";
+                _operationNotices?.Add(ex.Code == 1260
+                    ? "La directiva de Windows bloqueó la activación (1260). Se omitieron los límites de CPU, el modo turbo y los demás ajustes del plan."
+                    : $"Windows no permitió reactivar o cambiar el plan ({ex.Code}). Se conservó el plan actual y se aplicaron los demás ajustes.");
                 return false;
             }
         }
