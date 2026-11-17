@@ -1077,6 +1077,8 @@ namespace WinPulseOptimizer
                 string measurement = DescribeMemoryTrim(result);
                 string details = DescribeMemoryTrimProcesses(result);
                 ShowChangeCard("RAM TRAS EL AJUSTE", measurement, details);
+                TxtQuickCleanupHint.Text = $"Último ajuste: {measurement.Replace(Environment.NewLine, " · ")}";
+                TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
                 RecordAction("Ajuste de memoria de procesos", details, "Pestaña 2: Procesos y RAM", 2, "", measurement);
                 Log($"{measurement.Replace(Environment.NewLine, ". ")}. {details}");
                 RefreshTopProcesses();
@@ -1143,10 +1145,12 @@ namespace WinPulseOptimizer
 
         private async void BtnMaintenance_Click(object sender, RoutedEventArgs e)
         {
-            if (_systemChangeInProgress || _benchmarkCancellation != null) return;
+            if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
             SetSystemChangeBusy(true);
             ShowChangeCard("MANTENIMIENTO EN CURSO", "Limpiando archivos temporales y cachés…",
                 "Se medirá la RAM justo antes y después de ajustar la memoria.");
+            TxtQuickCleanupHint.Text = "Limpiando temporales y liberando memoria RAM…";
+            TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
             Log("Iniciando limpieza de archivos temporales y cachés.");
             string? measurement = null;
             string? measurementDetail = null;
@@ -1158,6 +1162,8 @@ namespace WinPulseOptimizer
                 measurement = DescribeMemoryTrim(trim);
                 measurementDetail = cleanup;
                 ShowChangeCard("RAM TRAS LA LIMPIEZA", measurement, $"{cleanup} Optimización del disco en curso…");
+                TxtQuickCleanupHint.Text = $"Última limpieza: {measurement.Replace(Environment.NewLine, " · ")} · {filesDeleted} archivos eliminados.";
+                TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
                 Log($"{cleanup} Iniciando la optimización del disco.");
 
                 await RunSystemRequestAsync(new(SystemAction.DiskMaintenance), "Vaciar la caché DNS y optimizar el disco del sistema.");
