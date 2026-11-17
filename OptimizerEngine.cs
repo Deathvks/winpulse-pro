@@ -194,6 +194,19 @@ namespace WinPulseOptimizer
             return Guid.TryParse(value, out var plan) && plan != Guid.Empty ? plan : null;
         }
 
+        private static bool _strictPlanLimitsCheck;
+
+        private static Guid? FindSchemeByNames(params string[] names)
+        {
+            var schemes = GetPowerSchemes();
+            foreach (string name in names)
+            {
+                var match = schemes.FirstOrDefault(s => string.Equals(s.Name.Trim(), name, StringComparison.OrdinalIgnoreCase));
+                if (match != null) return match.Id;
+            }
+            return null;
+        }
+
         internal static Guid ChooseWritablePowerPlan(UsageProfile profile, Guid active, bool modernStandby,
             bool policyEnforced, bool balancedAvailable)
         {
@@ -203,13 +216,16 @@ namespace WinPulseOptimizer
             {
                 var ultimate = Guid.Parse(GuidUltimatePerformance);
                 if (PlanExists(ultimate)) return ultimate;
+                if (FindSchemeByNames("Máximo rendimiento", "Ultimate Performance") is Guid customUltimate) return customUltimate;
                 var highPerf = Guid.Parse(GuidHighPerformance);
                 if (PlanExists(highPerf)) return highPerf;
+                if (FindSchemeByNames("Alto rendimiento", "High Performance") is Guid customHigh) return customHigh;
             }
             else if (profile == UsageProfile.ChillBattery)
             {
                 var saver = Guid.Parse(GuidPowerSaver);
                 if (PlanExists(saver)) return saver;
+                if (FindSchemeByNames("Economizador", "Power saver") is Guid customSaver) return customSaver;
             }
             return balancedAvailable ? Guid.Parse(GuidBalanced) : active;
         }
@@ -220,7 +236,16 @@ namespace WinPulseOptimizer
                 throw new InvalidOperationException("Windows fija el plan de energía mediante una directiva y no permite cambiarlo.");
             if (!PlanExists(planId))
                 throw new IOException("El plan de energía seleccionado ya no está disponible en Windows.");
-            ActivatePlan(planId);
+            try
+            {
+                ActivatePlan(planId);
+            }
+            catch (WindowsPowerException ex) when (ex.Code is 1260 or 50 or 5)
+            {
+                throw new InvalidOperationException(
+                    $"Windows no permitió activar ese plan de energía (código {ex.Code}). En equipos con Modern Standby S0 o directiva activa, Windows restringe el cambio de plan.",
+                    ex);
+            }
         }
 
         public static Guid? ApplyUsagePowerScheme(UsageProfile profile)
@@ -234,19 +259,22 @@ namespace WinPulseOptimizer
                 _operationNotices?.Add($"La directiva de Windows mantiene el plan {ReadPlanName(active) ?? active.ToString()}.");
             else if ((modernStandby || profile is UsageProfile.FactoryDefault or UsageProfile.StudyWork) && !balancedAvailable)
                 _operationNotices?.Add("Equilibrado no está disponible. Se conserva el plan actual.");
-            bool planBlocked = !TryActivateProfilePlan(plan);
+            bool planBlocked = !TryActivateProfilePlan(plan, out bool canReactivate);
+            _strictPlanLimitsCheck = canReactivate;
             if (planBlocked)
             {
                 if (_profileSettings == null) return null;
                 plan = active;
             }
 
+            bool optionalLimits = !canReactivate;
             var limits = GetProfileProcessorLimits(profile);
-            if (profile == UsageProfile.GamingMax) WritePower(plan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc, planBlocked: planBlocked);
-            WritePower(plan, "PROCTHROTTLEMIN", false, limits.MinimumOnAc, planBlocked: planBlocked);
+            if (profile == UsageProfile.GamingMax)
+                WritePower(plan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc, optional: optionalLimits, planBlocked: planBlocked);
+            WritePower(plan, "PROCTHROTTLEMIN", false, limits.MinimumOnAc, optional: optionalLimits, planBlocked: planBlocked);
             if (profile != UsageProfile.GamingMax)
-                WritePower(plan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc, planBlocked: planBlocked);
-            WritePower(plan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery, planBlocked: planBlocked);
+                WritePower(plan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc, optional: optionalLimits, planBlocked: planBlocked);
+            WritePower(plan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery, optional: optionalLimits, planBlocked: planBlocked);
 
             // Profiles reuse existing plans, so restore timeouts left by a prior profile.
             if (profile != UsageProfile.GamingMax)
@@ -271,7 +299,7 @@ namespace WinPulseOptimizer
             }
 
             if (planBlocked) return null;
-            ActivatePlan(plan);
+            if (canReactivate) ActivatePlan(plan);
             if (boostChanged && (QueryPower(plan, ProcessorBoostSetting, false, out uint boost) != 0 ||
                 boost != AggressiveProcessorBoost))
                 _operationNotices?.Add("Windows no mantuvo el modo turbo Agresiva después de activar el plan.");
@@ -289,7 +317,7 @@ namespace WinPulseOptimizer
             WritePowerMode(false, mode, optional: true);
             WritePowerMode(true, mode, optional: true);
 
-            if (plan.HasValue && (ActivePlan() != plan.Value || !HasProfileProcessorLimits(profile, plan.Value)))
+            if (plan.HasValue && (ActivePlan() != plan.Value || (_strictPlanLimitsCheck && !HasProfileProcessorLimits(profile, plan.Value))))
                 throw new IOException("Windows no mantuvo el plan o los límites de CPU solicitados después de activarlo.");
         }
 
@@ -694,10 +722,10 @@ namespace WinPulseOptimizer
         {
             if (planBlocked && _profileSettings == null) return;
             Guid plan = planBlocked ? ReadActivePlanDetails().Id : ActivePlan();
-            if (!optional) ActivatePlan(plan);
+            if (!optional) TryReactivateActivePlan(plan, optional: true);
             bool changed = WritePower(plan, "CPMINCORES", false, disableOnAc ? 100u : minimumOnAc, optional, planBlocked);
             changed |= WritePower(plan, "CPMINCORES", true, 5, optional, planBlocked);
-            if (changed) ActivatePlan(plan);
+            if (changed) TryReactivateActivePlan(plan, optional: true);
         }
 
         public static void SetUsbAndPciePowerSave(bool disableOnAc, bool optional = false) =>
@@ -707,11 +735,11 @@ namespace WinPulseOptimizer
         {
             if (planBlocked && _profileSettings == null) return;
             Guid plan = planBlocked ? ReadActivePlanDetails().Id : ActivePlan();
-            if (!optional) ActivatePlan(plan);
+            if (!optional) TryReactivateActivePlan(plan, optional: true);
             bool changed = WritePower(plan, "USB", false, disableOnAc ? 0u : 1u, optional, planBlocked);
             changed |= WritePower(plan, "PCIE", false, disableOnAc ? 0u : 2u, optional, planBlocked);
             changed |= WritePower(plan, "PCIE", true, 2, optional, planBlocked);
-            if (changed) ActivatePlan(plan);
+            if (changed) TryReactivateActivePlan(plan, optional: true);
         }
 
         public static void SetNagleAlgorithm(bool disable, bool optional = false)

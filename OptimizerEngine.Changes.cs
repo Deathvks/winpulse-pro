@@ -470,7 +470,7 @@ namespace WinPulseOptimizer
             if (ActivePlan() != guid) throw new IOException("Windows no confirmó el plan de energía activo.");
         }
 
-        private static bool TryActivateProfilePlan(Guid plan)
+        private static bool TryActivateProfilePlan(Guid plan, out bool canReactivate)
         {
             Guid previous = ActivePlan();
             ProfileSettingAttempt? row = _profileSettings == null ? null
@@ -482,17 +482,36 @@ namespace WinPulseOptimizer
             {
                 ActivatePlan(plan);
                 if (row != null) row.Written = previous != plan;
+                canReactivate = true;
                 return true;
             }
             catch (WindowsPowerException ex) when ((ex.Code is 1260 or 50 or 5) && ActivePlan() == previous)
             {
                 DiscardUnchangedRecords(savedBefore);
+                canReactivate = false;
+                if (previous == plan)
+                {
+                    // El plan solicitado ya es el activo; Windows solo rechazó reactivarlo.
+                    return true;
+                }
                 if (row != null)
                     row.Note = ex.Code == 1260 ? BlockedPlan : $"Bloqueado por Windows ({ex.Code})";
                 _operationNotices?.Add(ex.Code == 1260
-                    ? "La directiva de Windows bloqueó la activación (1260). Se omitieron los límites de CPU, el modo turbo y los demás ajustes del plan."
-                    : $"Windows no permitió reactivar o cambiar el plan ({ex.Code}). Se conservó el plan actual y se aplicaron los demás ajustes.");
+                    ? "La directiva de Windows bloqueó el cambio de plan (1260). Se omitieron los límites de CPU, el modo turbo y los demás ajustes del plan."
+                    : $"Windows no permitió cambiar al plan solicitado ({ex.Code}). Se conservó el plan actual y se omitieron sus límites de energía.");
                 return false;
+            }
+        }
+
+        private static void TryReactivateActivePlan(Guid plan, bool optional)
+        {
+            try
+            {
+                ActivatePlan(plan);
+            }
+            catch (WindowsPowerException ex) when (optional && (ex.Code is 1260 or 50 or 5) && ActivePlan() == plan)
+            {
+                // El plan sigue activo; Windows no requiere o no admite reactivarlo aquí.
             }
         }
 
