@@ -629,7 +629,7 @@ namespace WinPulseOptimizer
             return size;
         }
 
-        private static bool PlanExists(Guid guid) => ReadPlanNameSize(guid) != 0;
+        private static bool PlanExists(Guid guid) => GetPowerSchemes().Any(scheme => scheme.Id == guid);
 
         private static string? ReadPlanName(Guid guid)
         {

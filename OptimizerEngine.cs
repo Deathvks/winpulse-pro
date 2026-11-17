@@ -196,38 +196,43 @@ namespace WinPulseOptimizer
 
         private static bool _strictPlanLimitsCheck;
 
-        private static Guid? FindSchemeByNames(params string[] names)
-        {
-            var schemes = GetPowerSchemes();
-            foreach (string name in names)
-            {
-                var match = schemes.FirstOrDefault(s => string.Equals(s.Name.Trim(), name, StringComparison.OrdinalIgnoreCase));
-                if (match != null) return match.Id;
-            }
-            return null;
-        }
-
         internal static Guid ChooseWritablePowerPlan(UsageProfile profile, Guid active, bool modernStandby,
-            bool policyEnforced, bool balancedAvailable)
+            bool policyEnforced, bool balancedAvailable, WindowsPowerPlanItem[]? availableSchemes = null)
         {
             if (policyEnforced) return active;
-            if (modernStandby) return balancedAvailable ? Guid.Parse(GuidBalanced) : active;
+            var schemes = availableSchemes ?? GetPowerSchemes();
+            bool Has(Guid id) => schemes.Any(s => s.Id == id);
+            Guid? ByName(params string[] names)
+            {
+                foreach (string name in names)
+                {
+                    var match = schemes.FirstOrDefault(s => string.Equals(s.Name.Trim(), name, StringComparison.OrdinalIgnoreCase));
+                    if (match != null) return match.Id;
+                }
+                return null;
+            }
+
             if (profile == UsageProfile.GamingMax)
             {
                 var ultimate = Guid.Parse(GuidUltimatePerformance);
-                if (PlanExists(ultimate)) return ultimate;
-                if (FindSchemeByNames("Máximo rendimiento", "Ultimate Performance") is Guid customUltimate) return customUltimate;
-                var highPerf = Guid.Parse(GuidHighPerformance);
-                if (PlanExists(highPerf)) return highPerf;
-                if (FindSchemeByNames("Alto rendimiento", "High Performance") is Guid customHigh) return customHigh;
+                if (Has(ultimate)) return ultimate;
+                if (ByName("Máximo rendimiento", "Ultimate Performance") is Guid customUltimate) return customUltimate;
+                if (!modernStandby)
+                {
+                    var highPerf = Guid.Parse(GuidHighPerformance);
+                    if (Has(highPerf)) return highPerf;
+                    if (ByName("Alto rendimiento", "High Performance") is Guid customHigh) return customHigh;
+                }
             }
-            else if (profile == UsageProfile.ChillBattery)
+            else if (!modernStandby && profile == UsageProfile.ChillBattery)
             {
                 var saver = Guid.Parse(GuidPowerSaver);
-                if (PlanExists(saver)) return saver;
-                if (FindSchemeByNames("Economizador", "Power saver") is Guid customSaver) return customSaver;
+                if (Has(saver)) return saver;
+                if (ByName("Economizador", "Power saver") is Guid customSaver) return customSaver;
             }
-            return balancedAvailable ? Guid.Parse(GuidBalanced) : active;
+
+            var balanced = Guid.Parse(GuidBalanced);
+            return balancedAvailable && Has(balanced) ? balanced : active;
         }
 
         public static void SetActivePowerScheme(Guid planId)
@@ -253,19 +258,21 @@ namespace WinPulseOptimizer
             Guid active = ActivePlan();
             Guid? enforced = ReadEnforcedPowerPlan();
             bool modernStandby = SupportsModernStandby();
-            bool balancedAvailable = !enforced.HasValue && PlanExists(Guid.Parse(GuidBalanced));
-            Guid plan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable);
+            var schemes = GetPowerSchemes();
+            bool balancedAvailable = !enforced.HasValue && schemes.Any(s => s.Id == Guid.Parse(GuidBalanced));
+            Guid plan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable, schemes);
             if (enforced.HasValue)
                 _operationNotices?.Add($"La directiva de Windows mantiene el plan {ReadPlanName(active) ?? active.ToString()}.");
             else if ((modernStandby || profile is UsageProfile.FactoryDefault or UsageProfile.StudyWork) && !balancedAvailable)
                 _operationNotices?.Add("Equilibrado no está disponible. Se conserva el plan actual.");
-            bool planBlocked = !TryActivateProfilePlan(plan, out bool canReactivate);
-            _strictPlanLimitsCheck = canReactivate;
-            if (planBlocked)
+            bool switched = TryActivateProfilePlan(plan, out bool canReactivate);
+            if (!switched)
             {
-                if (_profileSettings == null) return null;
                 plan = active;
+                TryActivateProfilePlan(plan, out canReactivate);
             }
+            _strictPlanLimitsCheck = canReactivate;
+            bool planBlocked = false;
 
             bool optionalLimits = !canReactivate;
             var limits = GetProfileProcessorLimits(profile);
@@ -298,7 +305,6 @@ namespace WinPulseOptimizer
                     break;
             }
 
-            if (planBlocked) return null;
             if (canReactivate) ActivatePlan(plan);
             if (boostChanged && (QueryPower(plan, ProcessorBoostSetting, false, out uint boost) != 0 ||
                 boost != AggressiveProcessorBoost))

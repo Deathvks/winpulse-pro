@@ -77,57 +77,59 @@ public static partial class OptimizerEngine
 
         Guid? enforced = ReadEnforcedPowerPlan();
         bool modernStandby = SupportsModernStandby();
-        bool balancedAvailable = !enforced.HasValue && PlanExists(Guid.Parse(GuidBalanced));
-        Guid expectedPlan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable);
+        var schemes = GetPowerSchemes();
+        bool balancedAvailable = !enforced.HasValue && schemes.Any(s => s.Id == Guid.Parse(GuidBalanced));
+        Guid expectedPlan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable, schemes);
         string? expectedPlanDisplay = ReadReportValue(() => FormatReportPlan(expectedPlan));
         bool planBlocked = IsSettingBlockedInStore(store, "activePlan", "", expectedPlanDisplay);
 
         if (active != expectedPlan && !planBlocked)
             differences.Add("Plan de energía activo");
 
-        if (planBlocked || expectedPlan == Guid.Empty) return;
+        Guid targetPlan = active != expectedPlan && planBlocked ? active : expectedPlan;
+        if (targetPlan == Guid.Empty) return;
 
         var limits = GetProfileProcessorLimits(profile);
-        if (RequiredPowerDiffers(store, expectedPlan, "PROCTHROTTLEMIN", false, limits.MinimumOnAc) ||
-            RequiredPowerDiffers(store, expectedPlan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc) ||
-            RequiredPowerDiffers(store, expectedPlan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery))
+        if (RequiredPowerDiffers(store, targetPlan, "PROCTHROTTLEMIN", false, limits.MinimumOnAc) ||
+            RequiredPowerDiffers(store, targetPlan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc) ||
+            RequiredPowerDiffers(store, targetPlan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery))
         {
             differences.Add("Límites de CPU");
         }
 
         uint minCoresAc = values.DisableCoreParking ? 100u : (profile == UsageProfile.StudyWork ? 25u : 5u);
-        if (OptionalPowerDiffers(store, expectedPlan, "CPMINCORES", false, minCoresAc) ||
-            OptionalPowerDiffers(store, expectedPlan, "CPMINCORES", true, 5u))
+        if (OptionalPowerDiffers(store, targetPlan, "CPMINCORES", false, minCoresAc) ||
+            OptionalPowerDiffers(store, targetPlan, "CPMINCORES", true, 5u))
         {
             differences.Add("Núcleos activos");
         }
 
-        if (OptionalPowerDiffers(store, expectedPlan, "USB", false, values.DisableUsbPciePowerSave ? 0u : 1u) ||
-            OptionalPowerDiffers(store, expectedPlan, "PCIE", false, values.DisableUsbPciePowerSave ? 0u : 2u) ||
-            OptionalPowerDiffers(store, expectedPlan, "PCIE", true, 2u))
+        if (OptionalPowerDiffers(store, targetPlan, "USB", false, values.DisableUsbPciePowerSave ? 0u : 1u) ||
+            OptionalPowerDiffers(store, targetPlan, "PCIE", false, values.DisableUsbPciePowerSave ? 0u : 2u) ||
+            OptionalPowerDiffers(store, targetPlan, "PCIE", true, 2u))
         {
             differences.Add("Ahorro de energía USB/PCIe");
         }
 
         if (profile == UsageProfile.GamingMax)
         {
-            if (OptionalPowerDiffers(store, expectedPlan, ProcessorBoostSetting, false, AggressiveProcessorBoost))
+            if (OptionalPowerDiffers(store, targetPlan, ProcessorBoostSetting, false, AggressiveProcessorBoost))
                 differences.Add("Modo turbo de CPU");
-            if (OptionalPowerDiffers(store, expectedPlan, "DISKIDLE", false, 0u))
+            if (OptionalPowerDiffers(store, targetPlan, "DISKIDLE", false, 0u))
                 differences.Add("Apagado de disco");
-            if (OptionalPowerDiffers(store, expectedPlan, "STANDBYIDLE", false, 0u))
+            if (OptionalPowerDiffers(store, targetPlan, "STANDBYIDLE", false, 0u))
                 differences.Add("Tiempo de suspensión");
         }
         else
         {
-            if (profile == UsageProfile.StudyWork && OptionalPowerDiffers(store, expectedPlan, "STANDBYIDLE", false, 1800u))
+            if (profile == UsageProfile.StudyWork && OptionalPowerDiffers(store, targetPlan, "STANDBYIDLE", false, 1800u))
                 differences.Add("Tiempo de suspensión");
-            else if (profile != UsageProfile.StudyWork && OriginalPowerDiffers(store, expectedPlan, "STANDBYIDLE", false))
+            else if (profile != UsageProfile.StudyWork && OriginalPowerDiffers(store, targetPlan, "STANDBYIDLE", false))
                 differences.Add("Tiempo de suspensión");
 
-            if (OriginalPowerDiffers(store, expectedPlan, "DISKIDLE", false))
+            if (OriginalPowerDiffers(store, targetPlan, "DISKIDLE", false))
                 differences.Add("Apagado de disco");
-            if (OriginalPowerDiffers(store, expectedPlan, ProcessorBoostSetting, false))
+            if (OriginalPowerDiffers(store, targetPlan, ProcessorBoostSetting, false))
                 differences.Add("Modo turbo de CPU");
         }
     }
