@@ -25,12 +25,44 @@ namespace WinPulseOptimizer
         {
             SwGameOnBattery.IsChecked = store.AutoGameOnBattery;
             SwAutoForceDgpu.IsChecked = store.AutoForceDedicatedGpu;
+            SwSmartGamePriority.IsChecked = store.SmartGameScheduling;
+            TxtSmartGamePriorityStatus.Text = store.SmartGameScheduling ? "Activo · esperando juego" : "Desactivado";
+            TxtSmartGamePriorityStatus.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty,
+                store.SmartGameScheduling ? "AccentBrush" : "QuietBrush");
             _includedGames = (store.IncludedGameExecutables ?? new()).Select(HardwareMonitor.NormalizeExecutableName).ToArray();
             _excludedGames = (store.ExcludedGameExecutables ?? new()).Select(HardwareMonitor.NormalizeExecutableName).ToArray();
             TxtIncludedGames.Text = string.Join(Environment.NewLine, _includedGames.Select(game => game + ".exe"));
             TxtExcludedGames.Text = string.Join(Environment.NewLine, _excludedGames.Select(game => game + ".exe"));
             LoadGameProfiles(store.GameProfiles);
             RefreshDgpuGamesList();
+        }
+
+        private void SmartGamePriority_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading) return;
+            var store = HistoryManager.Load();
+            bool enabled = SwSmartGamePriority.IsChecked == true;
+            store.SmartGameScheduling = enabled;
+            if (!HistoryManager.Save(store))
+            {
+                _loading = true;
+                SwSmartGamePriority.IsChecked = !enabled;
+                _loading = false;
+                TxtSmartGamePriorityStatus.Text = "No se pudo guardar el reparto inteligente.";
+                return;
+            }
+            if (!enabled)
+            {
+                ProcessResourceMonitor.RestoreSmartGameScheduling();
+                TxtSmartGamePriorityStatus.Text = "Desactivado";
+                TxtSmartGamePriorityStatus.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "QuietBrush");
+            }
+            else
+            {
+                TxtSmartGamePriorityStatus.Text = "Activo · esperando juego";
+                TxtSmartGamePriorityStatus.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "AccentBrush");
+                ResetAutomationOverride();
+            }
         }
 
         private void BtnSaveGameRules_Click(object sender, RoutedEventArgs e)
@@ -99,6 +131,11 @@ namespace WinPulseOptimizer
             {
                 BtnApproveAutomation.Visibility = Visibility.Collapsed;
                 _lastAutomationPermissionNotice = null;
+                if (ProcessResourceMonitor.HasActiveSmartGameScheduling)
+                {
+                    await Task.Run(ProcessResourceMonitor.RestoreSmartGameScheduling);
+                    TxtSmartGamePriorityStatus.Text = SwSmartGamePriority.IsChecked == true ? "Pausado durante Pruebas A/B" : "Desactivado";
+                }
                 return;
             }
             if (_checkingAutomation || _systemChangeInProgress || _benchmarkCancellation != null ||
@@ -111,10 +148,12 @@ namespace WinPulseOptimizer
                 var profiles = _gameProfiles;
                 string activeTag = _activeProfileTag;
                 bool detectGames = SwAutoGame.IsChecked == true;
+                bool smartScheduling = SwSmartGamePriority.IsChecked == true;
+                bool scanGames = detectGames || smartScheduling;
                 string priorityTag = _lastAutomationTarget ?? activeTag;
                 var tracked = _trackedGame;
                 bool preferFastCheck = !approved && Environment.TickCount64 < _nextFullGameScanAt;
-                var (running, fullScan) = detectGames ? await Task.Run(() =>
+                var (running, fullScan) = scanGames ? await Task.Run(() =>
                 {
                     if (preferFastCheck && tracked != null && HardwareMonitor.IsSameGameRunning(tracked)) return (tracked, false);
                     var preferred = profiles.OrderByDescending(profile => profile.OwnsTag(priorityTag))
@@ -123,7 +162,8 @@ namespace WinPulseOptimizer
                 }) : (null, false);
                 if (_systemChangeInProgress || _benchmarkCancellation != null || _networkTesting ||
                     SwPauseAutomationForTests.IsChecked == true || activeTag != _activeProfileTag || profiles != _gameProfiles ||
-                    detectGames != (SwAutoGame.IsChecked == true) || included != _includedGames || excluded != _excludedGames)
+                    detectGames != (SwAutoGame.IsChecked == true) || smartScheduling != (SwSmartGamePriority.IsChecked == true) ||
+                    included != _includedGames || excluded != _excludedGames)
                     return;
 
                 _trackedGame = running;
@@ -135,12 +175,6 @@ namespace WinPulseOptimizer
                     UpdateLiveMetricsSchedule();
                 }
                 BtnApproveAutomation.Visibility = Visibility.Collapsed;
-                bool? onAc = _hasBattery == false ? true : HardwareMonitor.GetAcState();
-                if (!onAc.HasValue)
-                {
-                    TxtAutoStatus.Text = "Fuente de energía desconocida";
-                    return;
-                }
                 var matched = profiles.FirstOrDefault(profile =>
                     game != null && profile.Executables.Contains(game, StringComparer.OrdinalIgnoreCase));
                 bool wantDgpu = running != null && (matched?.PreferDedicatedGpu == true || SwAutoForceDgpu.IsChecked == true);
@@ -163,12 +197,49 @@ namespace WinPulseOptimizer
                 {
                     _lastDgpuAppliedKey = null;
                 }
-                string? desired = ChooseAutomaticProfile(onAc, game != null, SwGameOnBattery.IsChecked == true,
+
+                if (smartScheduling && running != null)
+                {
+                    var gameExcluded = included.Concat(profiles.SelectMany(profile => profile.Executables))
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    var schedStatus = await Task.Run(() => ProcessResourceMonitor.ApplySmartGameScheduling(running, gameExcluded));
+                    if (SwSmartGamePriority.IsChecked == true)
+                    {
+                        string gamePart = schedStatus.GameProtected
+                            ? $"{schedStatus.GameName}.exe protegido por anticheat"
+                            : schedStatus.GameBoosted
+                                ? $"{schedStatus.GameName}.exe en prioridad alta"
+                                : $"{schedStatus.GameName}.exe detectado";
+                        string bgPart = schedStatus.ThrottledCount > 0
+                            ? $" · {schedStatus.ThrottledCount} app(s) minimizadas en EcoQoS"
+                            : " · sin apps pesadas minimizadas";
+                        TxtSmartGamePriorityStatus.Text = $"{gamePart}{bgPart}";
+                        TxtSmartGamePriorityStatus.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "AccentBrush");
+                    }
+                }
+                else
+                {
+                    if (ProcessResourceMonitor.HasActiveSmartGameScheduling)
+                        await Task.Run(ProcessResourceMonitor.RestoreSmartGameScheduling);
+                    TxtSmartGamePriorityStatus.Text = smartScheduling ? "Activo · esperando juego" : "Desactivado";
+                    TxtSmartGamePriorityStatus.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty,
+                        smartScheduling ? "AccentBrush" : "QuietBrush");
+                }
+
+                bool? onAc = _hasBattery == false ? true : HardwareMonitor.GetAcState();
+                if (!onAc.HasValue)
+                {
+                    TxtAutoStatus.Text = "Fuente de energía desconocida";
+                    return;
+                }
+
+                string? desired = ChooseAutomaticProfile(onAc, detectGames && game != null, SwGameOnBattery.IsChecked == true,
                     SwAutoBattery.IsChecked == true, matched);
                 if (_automationTargetKnown && _lastAutomationTarget != desired) ResetAutomationOverride();
                 _automationTargetKnown = true;
                 _lastAutomationTarget = desired;
                 TxtAutoStatus.Text = game == null ? "Sin juego detectado" :
+                    !detectGames ? $"Juego activo: {game}" :
                     desired != null && desired != "CHILL" ? $"Juego: {game}" : $"Juego en batería: {game}";
                 if (_manualAutomationOverride)
                 {

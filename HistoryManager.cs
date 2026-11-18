@@ -56,6 +56,7 @@ namespace WinPulseOptimizer
         public bool AutoBatteryChill { get; set; } = true;
         public bool AutoGameOnBattery { get; set; }
         public bool AutoForceDedicatedGpu { get; set; }
+        public bool SmartGameScheduling { get; set; }
         public bool AdaptiveMemoryEnabled { get; set; }
         public List<string> AdaptiveMemoryApps { get; set; } = new();
         public bool? AdaptiveMemoryAutomatic { get; set; }

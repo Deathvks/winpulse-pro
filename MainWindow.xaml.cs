@@ -285,6 +285,7 @@ namespace WinPulseOptimizer
             _usageUpload?.Cancel();
             _usageStatistics.Flush();
             _processMeasurement?.Cancel();
+            ProcessResourceMonitor.RestoreSmartGameScheduling();
             _automationTimer.Stop();
             _liveMetricsTimer.Stop();
             SystemEvents.PowerModeChanged -= SystemPowerModeChanged;

@@ -522,12 +522,27 @@
                                     </DockPanel>
                                 </Border>
 
-                                <Border x:Name="RowSwMmcss" Style="{StaticResource SettingRow}" Margin="0">
+                                <Border x:Name="RowSwMmcss" Style="{StaticResource SettingRow}">
                                     <DockPanel>
                                         <CheckBox x:Name="SwMmcss" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="14,0,0,0"/>
                                         <StackPanel>
                                             <TextBlock Text="Prioridad Alta para Gráfica y Procesador en Juegos" FontSize="13" FontWeight="SemiBold"/>
                                             <TextBlock Text="Da preferencia al juego frente a otros programas abiertos mientras estás jugando." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="RowSwSmartGamePriority" Style="{StaticResource SettingRow}" Margin="0">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwSmartGamePriority" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}"
+                                                  Checked="SmartGamePriority_Changed" Unchecked="SmartGamePriority_Changed" Margin="14,0,0,0"
+                                                  AutomationProperties.Name="Reparto inteligente de CPU mientras juegas"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Reparto inteligente de CPU mientras el juego está activo (sin UAC)" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Sube la prioridad del juego activo (Por encima de lo normal) y limita apps pesadas minimizadas con Modo eficiencia (EcoQoS) hasta que cierres o cambies de ventana."
+                                                       FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                            <TextBlock x:Name="TxtSmartGamePriorityStatus" Text="Desactivado" FontFamily="{DynamicResource MonoFont}" FontSize="11"
+                                                       Foreground="{DynamicResource QuietBrush}" Margin="0,5,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>
