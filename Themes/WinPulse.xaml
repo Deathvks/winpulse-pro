@@ -221,19 +221,19 @@
 
     <Style x:Key="SectionCard" TargetType="{x:Type Border}">
         <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="18,16"/>
-        <Setter Property="Margin" Value="0,0,0,14"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="22,18"/>
+        <Setter Property="Margin" Value="0,0,0,18"/>
     </Style>
     <Style x:Key="SettingRow" TargetType="{x:Type Border}">
-        <Setter Property="Background" Value="{DynamicResource RaisedBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}"/>
+        <Setter Property="Background" Value="#131418"/>
+        <Setter Property="BorderBrush" Value="#26282E"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="10"/>
-        <Setter Property="Padding" Value="14,11"/>
-        <Setter Property="Margin" Value="0,0,0,8"/>
+        <Setter Property="Padding" Value="16,13"/>
+        <Setter Property="Margin" Value="0,0,0,10"/>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
@@ -247,10 +247,10 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
     </Style>
     <Style x:Key="SectionSubtitle" TargetType="{x:Type TextBlock}">
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
-        <Setter Property="Margin" Value="0,3,0,12"/>
+        <Setter Property="Margin" Value="0,4,0,16"/>
     </Style>
 
     <Style TargetType="{x:Type CheckBox}" x:Key="ToggleSwitch">
@@ -321,25 +321,22 @@
                 <ControlTemplate TargetType="{x:Type TabControl}">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="206"/>
-                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="216"/>
+                            <ColumnDefinition Width="22"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}"
-                                BorderThickness="1" Padding="10,12" CornerRadius="12" VerticalAlignment="Stretch">
+                        <Border Grid.Column="0" Background="Transparent" BorderBrush="{DynamicResource DividerBrush}"
+                                BorderThickness="0,0,1,0" Padding="0,2,16,0" VerticalAlignment="Stretch">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="SECCIONES" Style="{StaticResource SectionKicker}"
-                                           Margin="8,0,8,10"/>
+                                           Margin="10,0,8,12"/>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                     <StackPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1"/>
                                 </ScrollViewer>
                             </DockPanel>
                         </Border>
-                        <Border Grid.Column="2" Background="{DynamicResource StageBrush}" BorderBrush="{DynamicResource DividerBrush}"
-                                BorderThickness="1" Padding="14,12" CornerRadius="12" ClipToBounds="True">
-                            <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent"
-                                              KeyboardNavigation.TabIndex="2"/>
-                        </Border>
+                        <ContentPresenter Grid.Column="2" x:Name="PART_SelectedContentHost" ContentSource="SelectedContent"
+                                          KeyboardNavigation.TabIndex="2"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
@@ -355,14 +352,14 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type TabItem}">
                     <Border x:Name="TabChrome" Background="Transparent" BorderBrush="Transparent" BorderThickness="1"
-                            CornerRadius="9" Margin="0,0,0,5" SnapsToDevicePixels="True">
+                            CornerRadius="9" Margin="0,0,0,6" SnapsToDevicePixels="True">
                         <Grid>
-                            <Border x:Name="HoverFill" Background="{DynamicResource RaisedBrush}" CornerRadius="8" Opacity="0"/>
-                            <Border x:Name="LeftBar" Width="3" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Margin="3,0,0,0" CornerRadius="2" Background="{DynamicResource AccentBrush}" Opacity="0"/>
+                            <Border x:Name="HoverFill" Background="{DynamicResource PanelBrush}" CornerRadius="8" Opacity="0"/>
+                            <Border x:Name="LeftBar" Width="3" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Margin="4,0,0,0" CornerRadius="2" Background="{DynamicResource AccentBrush}" Opacity="0"/>
                             <ContentControl x:Name="NavContent" Style="{StaticResource IconLabel}" Content="{TemplateBinding Header}"
                                             Tag="{TemplateBinding Tag}" Foreground="{TemplateBinding Foreground}"
-                                            Margin="12,10" VerticalAlignment="Center">
+                                            Margin="14,11" VerticalAlignment="Center">
                                 <ContentControl.RenderTransform>
                                     <TranslateTransform x:Name="NavSlide" X="0"/>
                                 </ContentControl.RenderTransform>
@@ -374,7 +371,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="HoverFill" Storyboard.TargetProperty="Opacity" To="0.85" Duration="0:0:0.13"/>
+                                        <DoubleAnimation Storyboard.TargetName="HoverFill" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.13"/>
                                         <DoubleAnimation Storyboard.TargetName="NavSlide" Storyboard.TargetProperty="X" To="3" Duration="0:0:0.14">
                                             <DoubleAnimation.EasingFunction>
                                                 <CubicEase EasingMode="EaseOut"/>
@@ -412,8 +409,8 @@
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
-                            <Setter TargetName="TabChrome" Property="Background" Value="{DynamicResource RaisedBrush}"/>
-                            <Setter TargetName="TabChrome" Property="BorderBrush" Value="{DynamicResource StrokeBrush}"/>
+                            <Setter TargetName="TabChrome" Property="Background" Value="{DynamicResource PanelBrush}"/>
+                            <Setter TargetName="TabChrome" Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
                             <Setter TargetName="NavContent" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                         </Trigger>
