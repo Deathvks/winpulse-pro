@@ -130,6 +130,9 @@ namespace WinPulseOptimizer
             "GlobalUserDisabled" => "Restricción de apps en segundo plano",
             "MenuShowDelay" => "Retardo de menús (ms)",
             "MinAnimate" => "Animación al abrir o minimizar ventanas",
+            "MouseSpeed" => "Aceleración del ratón (MouseSpeed)",
+            "MouseThreshold1" => "Umbral 1 de aceleración del ratón",
+            "MouseThreshold2" => "Umbral 2 de aceleración del ratón",
             _ => name
         };
 

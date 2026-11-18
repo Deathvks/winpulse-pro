@@ -267,6 +267,7 @@ namespace WinPulseOptimizer
             [@"HKCU|Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications"] = new[] { "GlobalUserDisabled" },
             [@"HKCU|Control Panel\Desktop"] = new[] { "MenuShowDelay" },
             [@"HKCU|Control Panel\Desktop\WindowMetrics"] = new[] { "MinAnimate" },
+            [@"HKCU|Control Panel\Mouse"] = new[] { "MouseSpeed", "MouseThreshold1", "MouseThreshold2" },
             [$"HKLM|{PowerModePath}"] = new[] { "ActiveOverlayAcPowerScheme", "ActiveOverlayDcPowerScheme" }
         };
 
@@ -362,6 +363,8 @@ namespace WinPulseOptimizer
                 NotifyMenuShowDelay(delay);
             else if (parts[0] == "HKCU" && parts[2] == "MinAnimate")
                 NotifyWindowAnimation((value as string ?? "1") != "0");
+            else if (parts[0] == "HKCU" && parts[2] is "MouseSpeed" or "MouseThreshold1" or "MouseThreshold2")
+                NotifyMouseFromRegistry();
         }
 
         private static readonly Dictionary<string, (Guid Group, Guid Setting)> PowerSettings = new()

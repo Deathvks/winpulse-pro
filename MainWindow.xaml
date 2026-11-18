@@ -814,12 +814,22 @@
                                     </DockPanel>
                                 </Border>
 
-                                <Border x:Name="RowSwUsbPcie" Style="{StaticResource SettingRow}" Margin="0">
+                                <Border x:Name="RowSwUsbPcie" Style="{StaticResource SettingRow}">
                                     <DockPanel>
                                         <CheckBox x:Name="SwUsbPcie" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="14,0,0,0"/>
                                         <StackPanel>
                                             <TextBlock Text="Evitar Cortes de Energía en USB y Gráfica (Enchufado)" FontSize="13" FontWeight="SemiBold"/>
                                             <TextBlock Text="Impide que Windows ponga en reposo los puertos USB del ratón/teclado o reduzca energía a la gráfica." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="RowSwMouseAccel" Style="{StaticResource SettingRow}" Margin="0">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwMouseAccel" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="14,0,0,0"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Desactivar Aceleración del Ratón (Respuesta 1:1 sin permiso extra)" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Desactiva «Mejorar la precisión del puntero» en Windows (MouseSpeed = 0) para mantener un movimiento lineal y constante al apuntar." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>

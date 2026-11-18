@@ -59,6 +59,9 @@ public static partial class OptimizerEngine
             "SwBgApps" => IsRegistryDwordEqual(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "BackgroundAccessApplications"), "GlobalUserDisabled", enabled ? 1 : 0),
             "SwFastUi" => IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Desktop"), "MenuShowDelay", enabled ? "20" : "400") &&
                 IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Desktop", "WindowMetrics"), "MinAnimate", enabled ? "0" : "1"),
+            "SwMouseAccel" => IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Mouse"), "MouseSpeed", enabled ? "0" : "1") &&
+                IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Mouse"), "MouseThreshold1", enabled ? "0" : "6") &&
+                IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Mouse"), "MouseThreshold2", enabled ? "0" : "10"),
             "SwNagle" => !NagleDiffers(enabled, requireAdapter: enabled),
             "SwSuspendServices" => !ServicesDiffer(store, enabled),
             "SwCoreParking" => IsCoreParkingInState(enabled),

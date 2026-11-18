@@ -80,6 +80,9 @@ namespace WinPulseOptimizer
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, int[] pvParam, uint fWinIni);
+
         private static readonly string BackupDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinPulseOptimizer", "Backups");
 
@@ -862,6 +865,38 @@ namespace WinPulseOptimizer
             SystemParametersInfo(0x0049, info.cbSize, ref info, 0x03);
         }
 
+        public static bool IsMouseAccelerationDisabled()
+        {
+            string mousePath = P("Control Panel", "Mouse");
+            return GetString(Registry.CurrentUser, mousePath, "MouseSpeed", "1") == "0" &&
+                GetString(Registry.CurrentUser, mousePath, "MouseThreshold1", "6") == "0" &&
+                GetString(Registry.CurrentUser, mousePath, "MouseThreshold2", "10") == "0";
+        }
+
+        public static void SetMouseAccelerationDisabled(bool disable)
+        {
+            string mousePath = P("Control Panel", "Mouse");
+            int speed = disable ? 0 : 1;
+            int t1 = disable ? 0 : 6;
+            int t2 = disable ? 0 : 10;
+            SetString(Registry.CurrentUser, mousePath, "MouseSpeed", speed.ToString(CultureInfo.InvariantCulture));
+            SetString(Registry.CurrentUser, mousePath, "MouseThreshold1", t1.ToString(CultureInfo.InvariantCulture));
+            SetString(Registry.CurrentUser, mousePath, "MouseThreshold2", t2.ToString(CultureInfo.InvariantCulture));
+            NotifyMouseParameters(t1, t2, speed);
+        }
+
+        internal static void NotifyMouseParameters(int threshold1, int threshold2, int speed) =>
+            SystemParametersInfo(0x0004, 0, new[] { threshold1, threshold2, speed }, 0x03);
+
+        internal static void NotifyMouseFromRegistry()
+        {
+            string mousePath = P("Control Panel", "Mouse");
+            int t1 = int.TryParse(GetString(Registry.CurrentUser, mousePath, "MouseThreshold1", "6"), out int v1) ? v1 : 6;
+            int t2 = int.TryParse(GetString(Registry.CurrentUser, mousePath, "MouseThreshold2", "10"), out int v2) ? v2 : 10;
+            int speed = int.TryParse(GetString(Registry.CurrentUser, mousePath, "MouseSpeed", "1"), out int vs) ? vs : 1;
+            NotifyMouseParameters(t1, t2, speed);
+        }
+
         public static Task<int> CleanTemporaryFilesAsync() => Task.Run(() =>
         {
             string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -915,6 +950,7 @@ namespace WinPulseOptimizer
             SetNagleAlgorithm(false);
             SetBackgroundApps(false);
             SetFastUiResponse(false);
+            SetMouseAccelerationDisabled(false);
             ApplyProfilePowerMode(UsageProfile.FactoryDefault, plan);
         }
 
