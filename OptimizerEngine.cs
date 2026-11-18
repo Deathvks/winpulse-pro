@@ -600,6 +600,7 @@ namespace WinPulseOptimizer
                 return;
             }
 
+            var priorOperations = (_changes ?? SystemChangeJournal.Load()).Undo;
             foreach (string service in HeavyServices)
             {
                 var state = ReadService(service);
@@ -609,15 +610,16 @@ namespace WinPulseOptimizer
                     continue;
                 }
 
+                string startMode = ReadServiceStartMode(service);
+                if (startMode != "disabled")
+                {
+                    if (SavedServiceStartMode(priorOperations, service) == null)
+                        Remember("serviceStart", service, startMode);
+                    SetServiceStartMode(service, "disabled");
+                }
+
                 if (state.Value.State == "Running") SetServiceState(service, running: false);
                 else TrackProfileService(service, state.Value.State, "Stopped");
-
-                string startMode = ReadServiceStartMode(service);
-                if (startMode is "auto" or "delayed-auto")
-                {
-                    Remember("serviceStart", service, startMode);
-                    SetServiceStartMode(service, "demand");
-                }
             }
         }
 

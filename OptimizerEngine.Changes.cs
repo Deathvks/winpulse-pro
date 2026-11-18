@@ -174,6 +174,8 @@ namespace WinPulseOptimizer
             if (settings.Count == 0) return "";
             string notice = "";
             var createdPlans = settings.Where(s => s.Type == "newPlan").Select(s => s.Target).ToHashSet();
+            foreach (var start in settings.Where(s => s.Type == "serviceStart").Reverse())
+                SetServiceStartMode(start.Target, start.Value!);
             foreach (var saved in settings.AsEnumerable().Reverse())
             {
                 switch (saved.Type)
@@ -193,10 +195,7 @@ namespace WinPulseOptimizer
                     case "service":
                         SetServiceState(saved.Target, saved.Value == "Running");
                         break;
-                    case "serviceStart":
-                        SetServiceStartMode(saved.Target, saved.Value!);
-                        break;
-                    case "serviceRelease" or "serviceStartRelease":
+                    case "serviceStart" or "serviceRelease" or "serviceStartRelease":
                         break;
                     case "task" when saved.Target == AutoStartTask:
                         RestoreAutoStart(saved.Value!);

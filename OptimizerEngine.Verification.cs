@@ -316,7 +316,8 @@ public static partial class OptimizerEngine
         try
         {
             if (suspend)
-                return HeavyServices.Any(service => ReadService(service)?.State == "Running");
+                return HeavyServices.Any(service => ReadService(service) is { } s &&
+                    (s.State == "Running" || s.StartMode != "Disabled"));
 
             return HeavyServices.Any(service =>
                 WasServicePausedByWinPulse(store.Undo, service) &&
