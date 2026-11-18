@@ -193,7 +193,10 @@ namespace WinPulseOptimizer
                     case "service":
                         SetServiceState(saved.Target, saved.Value == "Running");
                         break;
-                    case "serviceRelease":
+                    case "serviceStart":
+                        SetServiceStartMode(saved.Target, saved.Value!);
+                        break;
+                    case "serviceRelease" or "serviceStartRelease":
                         break;
                     case "task" when saved.Target == AutoStartTask:
                         RestoreAutoStart(saved.Value!);
@@ -764,6 +767,42 @@ namespace WinPulseOptimizer
                 }, TimeSpan.FromSeconds(10)))
                 throw new IOException($"Windows no confirmó el estado de {service}.");
             if (row != null) row.Written = true;
+        }
+
+        private static string ReadServiceStartMode(string service)
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(P("SYSTEM", "CurrentControlSet", "Services", service));
+                if (key?.GetValue("Start") is int start)
+                {
+                    if (start == 4) return "disabled";
+                    if (start == 3) return "demand";
+                    if (start == 2)
+                        return key.GetValue("DelayedAutostart") is 1 ? "delayed-auto" : "auto";
+                }
+            }
+            catch { }
+
+            return ReadService(service)?.StartMode switch
+            {
+                "Disabled" => "disabled",
+                "Manual" => "demand",
+                _ => "auto"
+            };
+        }
+
+        private static void SetServiceStartMode(string service, string mode)
+        {
+            if (!HeavyServices.Contains(service, StringComparer.Ordinal))
+                throw new InvalidDataException($"Servicio desconocido: {service}.");
+            if (mode is not ("auto" or "delayed-auto" or "demand" or "disabled"))
+                throw new InvalidDataException($"Modo de inicio no válido para {service}: {mode}.");
+            if (ReadServiceStartMode(service) == mode) return;
+
+            RunCommand("sc.exe", $"config {service} start= {mode}");
+            if (ReadServiceStartMode(service) != mode)
+                throw new IOException($"Windows no confirmó el modo de inicio ({mode}) para {service}.");
         }
     }
 }

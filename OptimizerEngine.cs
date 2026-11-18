@@ -583,8 +583,21 @@ namespace WinPulseOptimizer
             foreach (string service in HeavyServices)
             {
                 var state = ReadService(service);
-                if (state?.State == "Running") SetServiceState(service, running: false);
-                else TrackProfileService(service, state?.State, "Stopped", state == null ? "Servicio no disponible" : null);
+                if (state == null)
+                {
+                    TrackProfileService(service, null, "Stopped", "Servicio no disponible");
+                    continue;
+                }
+
+                if (state.Value.State == "Running") SetServiceState(service, running: false);
+                else TrackProfileService(service, state.Value.State, "Stopped");
+
+                string startMode = ReadServiceStartMode(service);
+                if (startMode is "auto" or "delayed-auto")
+                {
+                    Remember("serviceStart", service, startMode);
+                    SetServiceStartMode(service, "demand");
+                }
             }
         }
 
@@ -601,6 +614,19 @@ namespace WinPulseOptimizer
 
             foreach (string service in HeavyServices)
             {
+                if (SavedServiceStartMode(operations, service) is { } savedStart)
+                {
+                    try
+                    {
+                        SetServiceStartMode(service, savedStart);
+                        Remember("serviceStartRelease", service, null);
+                    }
+                    catch (IOException ex)
+                    {
+                        _operationNotices?.Add($"No se pudo restaurar el inicio de {service}. {ex.Message}");
+                    }
+                }
+
                 if (!WasServicePausedByWinPulse(operations, service)) continue;
                 var state = ReadService(service);
                 if (state == null || state.Value.StartMode == "Disabled")
@@ -636,6 +662,16 @@ namespace WinPulseOptimizer
                 .FirstOrDefault(s => (s.Type is "service" or "serviceRelease") &&
                     string.Equals(s.Target, service, StringComparison.OrdinalIgnoreCase));
             return latest is { Type: "service", Value: "Running" };
+        }
+
+        private static string? SavedServiceStartMode(
+            System.Collections.Generic.IEnumerable<SavedOperation> operations, string service)
+        {
+            var latest = operations.Reverse()
+                .SelectMany(o => o.Settings.AsEnumerable().Reverse())
+                .FirstOrDefault(s => (s.Type is "serviceStart" or "serviceStartRelease") &&
+                    string.Equals(s.Target, service, StringComparison.OrdinalIgnoreCase));
+            return latest is { Type: "serviceStart" } ? latest.Value : null;
         }
 
         private static bool CheckHeavyServicesStopped()
