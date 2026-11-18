@@ -164,6 +164,23 @@
                             </Grid>
                         </Border>
 
+                        <!-- Recomendado para el plan elegido -->
+                        <Border x:Name="CardPlanRecommendation" Style="{StaticResource SectionCard}" Padding="20,14" Margin="0,0,0,18">
+                            <DockPanel LastChildFill="True">
+                                <Button x:Name="BtnApplyPlanRecommendation" DockPanel.Dock="Right" Content="Aplicar recomendados"
+                                        Style="{StaticResource SecondaryBtn}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                        Click="BtnApplyPlanRecommendation_Click"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock x:Name="TxtPlanRecommendationKicker" Text="RECOMENDADO PARA TU PLAN ELEGIDO"
+                                               Style="{StaticResource SectionKicker}" Margin="0,0,0,4"/>
+                                    <TextBlock x:Name="TxtPlanRecommendationBody"
+                                               Text="Analizando los ajustes recomendados para tu plan activo..."
+                                               FontSize="12.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
+                                               AutomationProperties.LiveSetting="Polite"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
                         <!-- Tarjetas de estado en vivo -->
                         <UniformGrid x:Name="DashboardMetrics" Columns="3" Margin="0,0,0,18">
                             <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,15" Margin="0,0,7,0">

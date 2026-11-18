@@ -27,6 +27,7 @@ public partial class MainWindow
         };
         _previousLowMemoryAt = null;
         _adaptiveMemorySettingsVersion++;
+        UpdatePlanRecommendationCard();
     }
 
     private void SwAdaptiveMemory_Click(object sender, RoutedEventArgs e)

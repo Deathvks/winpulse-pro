@@ -577,6 +577,140 @@ namespace WinPulseOptimizer
             _activeProfileTag = profileTag;
             if (!_startingUp && tagChanged && !HistoryManager.SaveActiveProfileTag(profileTag))
                 Log("No se pudo guardar el perfil seleccionado para el próximo inicio.");
+            UpdatePlanRecommendationCard();
+        }
+
+        private void UpdatePlanRecommendationCard()
+        {
+            if (CardPlanRecommendation == null) return;
+
+            bool fastUi = SwFastUi?.IsChecked == true;
+            bool mouse = SwMouseAccel?.IsChecked == true;
+            bool transp = SwTransparency?.IsChecked == true;
+            bool adaptive = SwAdaptiveMemory?.IsChecked == true;
+
+            if (_activeProfileTag == "JUGAR" || _activeProfileTag.StartsWith("GAME:", StringComparison.Ordinal))
+            {
+                TxtPlanRecommendationKicker.Text = "RECOMENDADO PARA TU PLAN ELEGIDO · JUGAR";
+                var missing = new List<string>();
+                if (!mouse) missing.Add("desactivar aceleración del ratón (respuesta 1:1)");
+                if (!transp) missing.Add("desactivar transparencias (menos carga DWM)");
+
+                if (missing.Count == 0)
+                {
+                    TxtPlanRecommendationBody.Text = "Ya tienes activos el reparto inteligente de CPU, dGPU automática, ratón 1:1 y sin transparencias.";
+                    BtnApplyPlanRecommendation.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    TxtPlanRecommendationBody.Text = $"Con Jugar ya tienes reparto inteligente de CPU y dGPU al detectar juegos. Opcional sin UAC: {string.Join(" y ", missing)}.";
+                    BtnApplyPlanRecommendation.Content = missing.Count == 2 ? "Aplicar extras gamer" : "Aplicar extra pendiente";
+                    BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
+                }
+                return;
+            }
+
+            if (_activeProfileTag == "ESTUDIAR")
+            {
+                TxtPlanRecommendationKicker.Text = "RECOMENDADO PARA TU PLAN ELEGIDO · ESTUDIAR / TRABAJAR";
+                var missing = new List<string>();
+                if (!fastUi) missing.Add("apertura instantánea de ventanas y menús");
+                if (!adaptive) missing.Add("optimización adaptativa de RAM");
+
+                if (missing.Count == 0)
+                {
+                    TxtPlanRecommendationBody.Text = "Ya tienes activos la apertura instantánea y el ajuste adaptativo de RAM para multitarea fluida.";
+                    BtnApplyPlanRecommendation.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    TxtPlanRecommendationBody.Text = $"Para moverte más rápido entre apps sin cerrar programas: activar {string.Join(" y ", missing)} (sin UAC).";
+                    BtnApplyPlanRecommendation.Content = "Aplicar para Estudiar";
+                    BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
+                }
+                return;
+            }
+
+            if (_activeProfileTag == "CHILL")
+            {
+                TxtPlanRecommendationKicker.Text = "RECOMENDADO PARA TU PLAN ELEGIDO · ESTAR CHILL";
+                var missing = new List<string>();
+                if (!transp) missing.Add("desactivar transparencias de Windows");
+                if (!adaptive) missing.Add("optimización adaptativa de RAM");
+
+                if (missing.Count == 0)
+                {
+                    TxtPlanRecommendationBody.Text = "Ya tienes activos el ahorro visual sin transparencias y el ajuste adaptativo de RAM.";
+                    BtnApplyPlanRecommendation.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    TxtPlanRecommendationBody.Text = $"Para ahorrar más batería y carga de GPU integrada: {string.Join(" y ", missing)} (sin UAC).";
+                    BtnApplyPlanRecommendation.Content = "Aplicar ahorro Chill";
+                    BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
+                }
+                return;
+            }
+
+            TxtPlanRecommendationKicker.Text = "RECOMENDADO PARA TU PLAN ELEGIDO";
+            TxtPlanRecommendationBody.Text = "Elige Jugar, Estudiar / Trabajar o Estar Chill arriba para ver los extras recomendados para cada escenario.";
+            BtnApplyPlanRecommendation.Visibility = Visibility.Collapsed;
+        }
+
+        private async void BtnApplyPlanRecommendation_Click(object sender, RoutedEventArgs e)
+        {
+            if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
+
+            if (_activeProfileTag == "JUGAR" || _activeProfileTag.StartsWith("GAME:", StringComparison.Ordinal))
+            {
+                if (SwMouseAccel.IsChecked != true)
+                {
+                    var m = TweakInfoMap["SwMouseAccel"];
+                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
+                        new(SystemAction.Tweak, "SwMouseAccel", true), null);
+                }
+                if (SwTransparency.IsChecked != true)
+                {
+                    var m = TweakInfoMap["SwTransparency"];
+                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
+                        new(SystemAction.Tweak, "SwTransparency", true), null);
+                }
+            }
+            else if (_activeProfileTag == "ESTUDIAR")
+            {
+                if (SwFastUi.IsChecked != true)
+                {
+                    var m = TweakInfoMap["SwFastUi"];
+                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
+                        new(SystemAction.Tweak, "SwFastUi", true), null);
+                }
+                if (SwAdaptiveMemory.IsChecked != true)
+                    EnableRecommendedAdaptiveMemory();
+            }
+            else if (_activeProfileTag == "CHILL")
+            {
+                if (SwTransparency.IsChecked != true)
+                {
+                    var m = TweakInfoMap["SwTransparency"];
+                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
+                        new(SystemAction.Tweak, "SwTransparency", true), null);
+                }
+                if (SwAdaptiveMemory.IsChecked != true)
+                    EnableRecommendedAdaptiveMemory();
+            }
+
+            UpdatePlanRecommendationCard();
+        }
+
+        private void EnableRecommendedAdaptiveMemory()
+        {
+            var store = HistoryManager.Load();
+            store.AdaptiveMemoryAutomatic = true;
+            if (HistoryManager.Save(store))
+            {
+                LoadAdaptiveMemorySettings(store);
+                Log("Optimización adaptativa de memoria activada como ajuste recomendado del plan.");
+            }
         }
 
         private void BtnToggleProfileGuide_Click(object sender, RoutedEventArgs e)
@@ -969,6 +1103,7 @@ namespace WinPulseOptimizer
             SwFastUi.IsChecked = OptimizerEngine.IsFastUiResponseEnabled();
             SwMouseAccel.IsChecked = OptimizerEngine.IsMouseAccelerationDisabled();
             SwTransparency.IsChecked = OptimizerEngine.IsTransparencyDisabled();
+            UpdatePlanRecommendationCard();
         }
 
         private async void Switch_Changed(object sender, RoutedEventArgs e)
@@ -1034,9 +1169,11 @@ namespace WinPulseOptimizer
             bool trimMemory = !automatic && profile != UsageProfile.FactoryDefault;
             if (automatic || skipVerification)
             {
-                return await ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
+                bool appliedAuto = await ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
                     new(action, Power: profile, Values: values),
                     tag, compareMetrics: true, trimMemory: trimMemory, automatic: automatic);
+                if (appliedAuto) SyncSmartGamingOptionsForProfile(profile);
+                return appliedAuto;
             }
 
             if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return false;
@@ -1077,13 +1214,38 @@ namespace WinPulseOptimizer
                 if (!IsVisible)
                     _trayIcon?.ShowBalloonTip(2500, "WinPulse Pro", $"El plan «{displayName}» ya está aplicado.", WinForms.ToolTipIcon.Info);
 
+                SyncSmartGamingOptionsForProfile(profile);
                 await RefreshVerifiedControlsAsync();
                 return true;
             }
 
-            return await ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
+            bool applied = await ApplySystemChangeAsync(title, explanation, "Barra superior: Planes de uso", 0, "CardProfiles",
                 new(action, Power: profile, Values: values),
                 tag, compareMetrics: true, trimMemory: trimMemory, automatic: false);
+            if (applied) SyncSmartGamingOptionsForProfile(profile);
+            return applied;
+        }
+
+        private void SyncSmartGamingOptionsForProfile(UsageProfile profile)
+        {
+            if (profile is not (UsageProfile.GamingMax or UsageProfile.FactoryDefault)) return;
+            bool enable = profile == UsageProfile.GamingMax;
+            var store = HistoryManager.Load();
+            if (store.SmartGameScheduling != enable || store.AutoForceDedicatedGpu != enable)
+            {
+                store.SmartGameScheduling = enable;
+                store.AutoForceDedicatedGpu = enable;
+                if (!HistoryManager.Save(store)) return;
+            }
+
+            _loading = true;
+            SwSmartGamePriority.IsChecked = enable;
+            SwAutoForceDgpu.IsChecked = enable;
+            _loading = false;
+            if (!enable) ProcessResourceMonitor.RestoreSmartGameScheduling();
+            TxtSmartGamePriorityStatus.Text = enable ? "Activo · esperando juego" : "Desactivado";
+            TxtSmartGamePriorityStatus.SetResourceReference(TextBlock.ForegroundProperty, enable ? "AccentBrush" : "QuietBrush");
+            UpdatePlanRecommendationCard();
         }
 
         private async void BtnPurgeRam_Click(object sender, RoutedEventArgs e)
