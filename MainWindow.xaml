@@ -23,9 +23,33 @@
 
         <!-- Cabecera -->
         <Border Grid.Row="0" Grid.ColumnSpan="3" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="0,0,0,14" Margin="0,0,0,14">
-            <DockPanel LastChildFill="True">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="BadgePower" Background="Transparent" Padding="6,4" VerticalAlignment="Center" Margin="8,0,12,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="18"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <DockPanel Grid.Column="0" LastChildFill="True">
+                    <Image x:Name="ImgAppLogo" DockPanel.Dock="Left" Width="30" Height="30" VerticalAlignment="Top" Margin="0,3,14,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="WinPulse Pro" FontSize="23" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                                       Margin="0,0,10,3" VerticalAlignment="Center"/>
+                            <Border Background="#15171C" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
+                                    CornerRadius="6" Padding="8,3" Margin="0,1,10,3" VerticalAlignment="Center">
+                                <TextBlock x:Name="TxtOsBadge" Text="Windows 11" FontFamily="{DynamicResource MonoFont}" FontSize="11"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                            </Border>
+                            <Button x:Name="BtnUpdateStatus" Content="Buscar actualización" Style="{StaticResource LinkBtn}"
+                                    HorizontalAlignment="Left" MinHeight="24" Padding="10,3" FontSize="11.5"
+                                    Margin="0,1,0,3" VerticalAlignment="Center" Click="BtnUpdateStatus_Click"
+                                    ToolTip="Comprobar si hay una versión nueva disponible en GitHub"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="TxtHardware" Text="Detectando equipo..." FontSize="12" Foreground="{DynamicResource QuietBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DockPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border x:Name="BadgePower" Background="Transparent" Padding="6,4" VerticalAlignment="Center" Margin="0,0,10,0">
                         <TextBlock x:Name="TxtPowerState" Text="Conectado a la corriente" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
                     </Border>
                     <Button x:Name="BtnToggleActivityLog" Content="Registro" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"
@@ -34,21 +58,7 @@
                     <Button Content="Privacidad" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" Click="BtnPrivacy_Click"/>
                     <Button Content="Salir" Style="{StaticResource DangerBtn}" Padding="12,7" ToolTip="Cerrar WinPulse Pro por completo. La X lo oculta junto al reloj." Click="BtnExitApp_Click"/>
                 </StackPanel>
-                <Image x:Name="ImgAppLogo" DockPanel.Dock="Left" Width="30" Height="30" VerticalAlignment="Top" Margin="0,2,14,0"/>
-                <StackPanel>
-                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="WinPulse Pro" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="99" Padding="10,3" Margin="12,2,0,0" VerticalAlignment="Center">
-                            <TextBlock x:Name="TxtOsBadge" Text="Windows 11" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
-                        </Border>
-                        <Button x:Name="BtnUpdateStatus" Content="Buscar actualización" Style="{StaticResource LinkBtn}"
-                                MinHeight="24" Padding="9,3" FontSize="11.5"
-                                Margin="10,2,0,0" VerticalAlignment="Center" Click="BtnUpdateStatus_Click"
-                                ToolTip="Comprobar si hay una versión nueva disponible en GitHub"/>
-                    </WrapPanel>
-                    <TextBlock x:Name="TxtHardware" Text="Detectando equipo..." FontSize="12" Foreground="{DynamicResource QuietBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                </StackPanel>
-            </DockPanel>
+            </Grid>
         </Border>
 
         <!-- Selector de Planes -->
@@ -69,43 +79,43 @@
                         </Button>
                     </WrapPanel>
                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                        <DockPanel>
-                            <Ellipse x:Name="DotActiveProfile" DockPanel.Dock="Left" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,5,8,0" VerticalAlignment="Top"/>
-                            <TextBlock x:Name="TxtActiveModeLabel" DockPanel.Dock="Left" Text="PLAN ACTIVO:" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,2,6,0" VerticalAlignment="Top"/>
-                            <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse x:Name="DotActiveProfile" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtActiveModeLabel" Text="PLAN ACTIVO:" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" Margin="0,0,10,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
                             <Button x:Name="BtnToggleProfileGuide" Content="¿Qué cambia?" Style="{StaticResource LinkBtn}"
-                                    MinHeight="20" Padding="8,1" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"
+                                    HorizontalAlignment="Left" MinHeight="24" Padding="9,3" FontSize="11.5" Margin="0,1,0,1" VerticalAlignment="Center"
                                     Click="BtnToggleProfileGuide_Click"/>
-                        </DockPanel>
-                        <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </DockPanel>
 
                 <Border x:Name="ProfileGuidePanel" Visibility="Collapsed" Margin="0,12,0,0" Padding="0,12,0,0"
-                        BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="0,1,0,0">
+                        BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0">
                     <UniformGrid Columns="4">
-                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="0,0,6,0">
+                        <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="0,0,8,0">
                             <StackPanel>
                                 <ContentControl Content="Jugar (Máximo)" Tag="{StaticResource GameGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
                                 <TextBlock Text="CPU al 100 %, turbo agresivo, Modo Juego, HAGS, temporizador 0,5 ms, núcleos activos, prioridad MMCSS/red/USB y pausa servicios pesados." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="3,0,3,0">
+                        <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="4,0,4,0">
                             <StackPanel>
                                 <ContentControl Content="Estudiar / Trabajar" Tag="{StaticResource StudyGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
                                 <TextBlock Text="CPU 5–100 %, modo Equilibrado, reanuda servicios pausados, mantiene Modo Juego, HAGS, ventana sin bordes, prioridad activa y TCP." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="3,0,3,0">
+                        <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="4,0,4,0">
                             <StackPanel>
                                 <ContentControl Content="Estar Chill" Tag="{StaticResource QuietGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
                                 <TextBlock Text="Ahorro: máx. CPU 80 % enchufado y 70 % batería, modo Eficiencia energética, bloquea apps en segundo plano y reanuda servicios." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SettingRow}" Padding="11,9" Margin="6,0,0,0">
+                        <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="8,0,0,0">
                             <StackPanel>
                                 <ContentControl Content="De fábrica" Tag="{StaticResource HistoryGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
                                 <TextBlock Text="Valores predefinidos de Windows: plan Equilibrado, CPU 5–100 %, sin bloqueo de apps en segundo plano ni ajustes agresivos." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>

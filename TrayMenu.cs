@@ -37,20 +37,27 @@ internal sealed class TrayMenu : ContextMenuStrip
 
     internal TrayMenu(Icon icon, Action open, Action gaming, Action study, Action chill, Action memory, Action exit)
     {
-        Padding = new Padding(6);
-        ImageScalingSize = new Size(20, 20);
+        Padding = new Padding(10, 10, 10, 10);
+        MinimumSize = new Size(310, 0);
+        ImageScalingSize = new Size(18, 18);
         ShowImageMargin = true;
-        Font = Own(new Font("Segoe UI", 10));
+        Font = Own(new Font("Segoe UI", 9.5f));
         var emphasis = Own(new Font(Font, FontStyle.Bold));
-        var small = Own(new Font("Segoe UI", 9));
+        var small = Own(new Font("Segoe UI", 8.5f));
 
         _brand = new ToolStripLabel("WinPulse Pro", Own(icon.ToBitmap()))
         {
-            Font = emphasis, Padding = new Padding(9, 5, 10, 0), TextAlign = ContentAlignment.MiddleLeft
+            Font = emphasis,
+            Padding = new Padding(12, 8, 16, 2),
+            Margin = new Padding(4, 2, 4, 0),
+            TextAlign = ContentAlignment.MiddleLeft
         };
         _status = new ToolStripLabel
         {
-            Font = small, Padding = new Padding(10, 2, 10, 6), TextAlign = ContentAlignment.MiddleLeft
+            Font = small,
+            Padding = new Padding(12, 2, 16, 8),
+            Margin = new Padding(4, 0, 4, 4),
+            TextAlign = ContentAlignment.MiddleLeft
         };
         var openItem = Command("Abrir WinPulse Pro", "OpenGlyph", open);
         openItem.Font = emphasis;
@@ -60,8 +67,8 @@ internal sealed class TrayMenu : ContextMenuStrip
         _memory = Command("Liberar RAM ahora", "MemoryGlyph", memory);
         _exit = Command("Salir por completo", "PowerGlyph", exit, "DangerBrush");
 
-        Items.AddRange([_brand, _status, new ToolStripSeparator(), openItem, new ToolStripSeparator(),
-            _gaming, _study, _chill, new ToolStripSeparator(), _memory, _exit]);
+        Items.AddRange([_brand, _status, Separator(), openItem, Separator(),
+            _gaming, _study, _chill, Separator(), _memory, _exit]);
         UpdateState("Plan de Windows", "", busy: false, canExit: true);
     }
 
@@ -85,11 +92,17 @@ internal sealed class TrayMenu : ContextMenuStrip
         _exit.Enabled = canExit;
     }
 
+    private static ToolStripSeparator Separator() => new()
+    {
+        Margin = new Padding(0, 4, 0, 4)
+    };
+
     private ToolStripMenuItem Command(string text, string glyph, Action click, string color = "AccentBrush")
     {
         var item = new ToolStripMenuItem(text, Own(DrawIcon(glyph, color)), (_, _) => click())
         {
-            Padding = new Padding(9, 7, 12, 7),
+            Padding = new Padding(10, 8, 34, 8),
+            Margin = new Padding(4, 2, 4, 2),
             ImageTransparentColor = Color.Transparent
         };
         return item;
@@ -148,7 +161,9 @@ internal sealed class TrayMenu : ContextMenuStrip
             e.Graphics.FillRectangle(brush, e.AffectedBounds);
             if (e.ToolStrip is TrayMenu menu)
             {
-                var header = new Rectangle(4, 4, menu.ClientSize.Width - 8, menu._status.Bounds.Bottom - 3);
+                int top = Math.Max(8, menu._brand.Bounds.Top - 2);
+                int bottom = menu._status.Bounds.Bottom + 2;
+                var header = new Rectangle(8, top, menu.ClientSize.Width - 16, Math.Max(0, bottom - top));
                 if (header.Width >= 14 && header.Height >= 14)
                     FillRounded(e.Graphics, header, _raised);
             }
@@ -165,7 +180,7 @@ internal sealed class TrayMenu : ContextMenuStrip
         {
             using var pen = new Pen(_stroke);
             int y = e.Item.Height / 2;
-            e.Graphics.DrawLine(pen, 10, y, VisibleWidth(e.Item) - 10, y);
+            e.Graphics.DrawLine(pen, 14, y, VisibleWidth(e.Item) - 14, y);
         }
 
         private static int VisibleWidth(ToolStripItem item) =>
@@ -177,13 +192,13 @@ internal sealed class TrayMenu : ContextMenuStrip
             bool hovered = item.Selected && item.Enabled;
             if (!hovered && !item.Checked) return;
 
-            var bounds = new Rectangle(4, 1, VisibleWidth(item) - 8, item.Height - 2);
+            var bounds = new Rectangle(8, 1, VisibleWidth(item) - 16, item.Height - 2);
             if (bounds.Width < 14 || bounds.Height < 14) return;
             FillRounded(e.Graphics, bounds, hovered ? _hover : _active);
             if (!item.Checked) return;
 
             float y = bounds.Top + bounds.Height * 0.5f;
-            float x = bounds.Right - 16;
+            float x = bounds.Right - 18;
             using var pen = new Pen(_accent, 1.8f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
             var previous = e.Graphics.SmoothingMode;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -213,6 +228,7 @@ internal sealed class TrayMenu : ContextMenuStrip
             if (e.Item is ToolStripMenuItem && e.Image != null)
             {
                 var rect = e.ImageRectangle;
+                rect.X += 6;
                 rect.Y = (e.Item.Height - rect.Height) / 2;
                 e = new ToolStripItemImageRenderEventArgs(e.Graphics, e.Item, e.Image, rect);
             }
@@ -225,6 +241,7 @@ internal sealed class TrayMenu : ContextMenuStrip
             if (e.Item is ToolStripMenuItem)
             {
                 var rect = e.TextRectangle;
+                rect.X += 6;
                 rect.Y = (e.Item.Height - rect.Height) / 2;
                 e.TextRectangle = rect;
             }
