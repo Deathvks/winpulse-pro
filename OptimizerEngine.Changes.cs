@@ -265,6 +265,8 @@ namespace WinPulseOptimizer
             [@"HKLM|SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"] = new[] { "SystemResponsiveness", "NetworkThrottlingIndex" },
             [@"HKLM|SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"] = new[] { "GPU Priority", "Priority", "Scheduling Category" },
             [@"HKCU|Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications"] = new[] { "GlobalUserDisabled" },
+            [@"HKCU|Control Panel\Desktop"] = new[] { "MenuShowDelay" },
+            [@"HKCU|Control Panel\Desktop\WindowMetrics"] = new[] { "MinAnimate" },
             [$"HKLM|{PowerModePath}"] = new[] { "ActiveOverlayAcPowerScheme", "ActiveOverlayDcPowerScheme" }
         };
 
@@ -355,6 +357,11 @@ namespace WinPulseOptimizer
                 _ => throw new InvalidDataException($"Tipo de registro incompatible para {parts[2]}.")
             };
             WriteRegistry(root, parts[1], parts[2], value, saved?.Kind ?? RegistryValueKind.None);
+            if (parts[0] == "HKCU" && parts[2] == "MenuShowDelay" &&
+                int.TryParse(value as string ?? "400", NumberStyles.Integer, CultureInfo.InvariantCulture, out int delay))
+                NotifyMenuShowDelay(delay);
+            else if (parts[0] == "HKCU" && parts[2] == "MinAnimate")
+                NotifyWindowAnimation((value as string ?? "1") != "0");
         }
 
         private static readonly Dictionary<string, (Guid Group, Guid Setting)> PowerSettings = new()

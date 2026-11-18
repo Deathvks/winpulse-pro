@@ -576,12 +576,22 @@
                                     </DockPanel>
                                 </Border>
 
-                                <Border x:Name="RowSwBgApps" Style="{StaticResource SettingRow}" Margin="0">
+                                <Border x:Name="RowSwBgApps" Style="{StaticResource SettingRow}">
                                     <DockPanel>
                                         <CheckBox x:Name="SwBgApps" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="14,0,0,0"/>
                                         <StackPanel>
                                             <TextBlock Text="Bloquear Apps de Windows en Segundo Plano" FontSize="13" FontWeight="SemiBold"/>
                                             <TextBlock Text="Impide que aplicaciones que no estás usando consuman memoria RAM." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="RowSwFastUi" Style="{StaticResource SettingRow}" Margin="0">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwFastUi" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="14,0,0,0"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Apertura instantánea de ventanas y menús (sin permiso extra)" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Reduce el retardo de menús (400 → 20 ms) y quita la animación lenta al abrir o minimizar ventanas para que la interfaz responda al instante." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>

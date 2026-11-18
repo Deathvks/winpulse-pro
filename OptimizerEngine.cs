@@ -67,6 +67,19 @@ namespace WinPulseOptimizer
         [DllImport("psapi.dll")]
         private static extern bool EmptyWorkingSet(IntPtr hwProc);
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct AnimationInfo
+        {
+            public uint cbSize;
+            public int iMinAnimate;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref AnimationInfo pvParam, uint fWinIni);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+
         private static readonly string BackupDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinPulseOptimizer", "Backups");
 
@@ -823,6 +836,32 @@ namespace WinPulseOptimizer
         public static void SetBackgroundApps(bool disable) =>
             SetDword(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "BackgroundAccessApplications"), "GlobalUserDisabled", disable ? 1 : 0);
 
+        public static bool IsFastUiResponseEnabled()
+        {
+            string minAnimate = GetString(Registry.CurrentUser, P("Control Panel", "Desktop", "WindowMetrics"), "MinAnimate", "1");
+            string menuDelay = GetString(Registry.CurrentUser, P("Control Panel", "Desktop"), "MenuShowDelay", "400");
+            return minAnimate == "0" && int.TryParse(menuDelay, NumberStyles.Integer, CultureInfo.InvariantCulture, out int delay) && delay <= 50;
+        }
+
+        public static void SetFastUiResponse(bool enable)
+        {
+            int delay = enable ? 20 : 400;
+            string minAnimate = enable ? "0" : "1";
+            SetString(Registry.CurrentUser, P("Control Panel", "Desktop"), "MenuShowDelay", delay.ToString(CultureInfo.InvariantCulture));
+            SetString(Registry.CurrentUser, P("Control Panel", "Desktop", "WindowMetrics"), "MinAnimate", minAnimate);
+            NotifyMenuShowDelay(delay);
+            NotifyWindowAnimation(!enable);
+        }
+
+        internal static void NotifyMenuShowDelay(int delayMs) =>
+            SystemParametersInfo(0x006B, (uint)Math.Clamp(delayMs, 0, 10000), IntPtr.Zero, 0x03);
+
+        internal static void NotifyWindowAnimation(bool animate)
+        {
+            var info = new AnimationInfo { cbSize = (uint)Marshal.SizeOf<AnimationInfo>(), iMinAnimate = animate ? 1 : 0 };
+            SystemParametersInfo(0x0049, info.cbSize, ref info, 0x03);
+        }
+
         public static Task<int> CleanTemporaryFilesAsync() => Task.Run(() =>
         {
             string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -875,6 +914,7 @@ namespace WinPulseOptimizer
             SetUsbAndPciePowerSave(false, optional: true, planBlocked: !plan.HasValue);
             SetNagleAlgorithm(false);
             SetBackgroundApps(false);
+            SetFastUiResponse(false);
             ApplyProfilePowerMode(UsageProfile.FactoryDefault, plan);
         }
 

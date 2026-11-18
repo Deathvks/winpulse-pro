@@ -17,7 +17,7 @@ internal sealed record SystemRequest(SystemAction Action, string? Name = null, b
 {
     internal bool RequiresAdministrator => Action switch
     {
-        SystemAction.Tweak => Name is not ("SwGameMode" or "SwWindowedOpt" or "SwBgApps"),
+        SystemAction.Tweak => Name is not ("SwGameMode" or "SwWindowedOpt" or "SwBgApps" or "SwFastUi"),
         SystemAction.StartupApp => !UserScope,
         _ => true
     };
@@ -89,6 +89,7 @@ internal static class SystemOperations
         "SwUsbPcie" => () => OptimizerEngine.SetUsbAndPciePowerSave(enabled),
         "SwNagle" => () => OptimizerEngine.SetNagleAlgorithm(enabled),
         "SwBgApps" => () => OptimizerEngine.SetBackgroundApps(enabled),
+        "SwFastUi" => () => OptimizerEngine.SetFastUiResponse(enabled),
         _ => throw new InvalidDataException("El ajuste solicitado no es compatible.")
     };
 

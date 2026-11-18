@@ -128,6 +128,8 @@ namespace WinPulseOptimizer
             "Priority" => "MMCSS · prioridad de juegos",
             "Scheduling Category" => "MMCSS · categoría de juegos",
             "GlobalUserDisabled" => "Restricción de apps en segundo plano",
+            "MenuShowDelay" => "Retardo de menús (ms)",
+            "MinAnimate" => "Animación al abrir o minimizar ventanas",
             _ => name
         };
 

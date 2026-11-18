@@ -57,6 +57,8 @@ public static partial class OptimizerEngine
             "SwMmcss" => IsMmcssInState(enabled),
             "SwForegroundPrio" => IsRegistryDwordEqual(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", enabled ? 26 : 2),
             "SwBgApps" => IsRegistryDwordEqual(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "BackgroundAccessApplications"), "GlobalUserDisabled", enabled ? 1 : 0),
+            "SwFastUi" => IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Desktop"), "MenuShowDelay", enabled ? "20" : "400") &&
+                IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Desktop", "WindowMetrics"), "MinAnimate", enabled ? "0" : "1"),
             "SwNagle" => !NagleDiffers(enabled, requireAdapter: enabled),
             "SwSuspendServices" => !ServicesDiffer(store, enabled),
             "SwCoreParking" => IsCoreParkingInState(enabled),

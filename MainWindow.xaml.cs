@@ -36,6 +36,7 @@ namespace WinPulseOptimizer
             ["SwForegroundPrio"] = new("Dar más potencia a la ventana activa", "Prioriza la ventana que tienes abierta en pantalla frente a las minimizadas.", "Pestaña 2: Procesos y RAM", 2, "RowSwForegroundPrio"),
             ["SwGameDvr"] = new("Apagar Grabación Oculta de Pantalla", "Evita que Windows esté grabando vídeo en segundo plano gastando memoria gráfica.", "Pestaña 2: Procesos y RAM", 2, "RowSwGameDvr"),
             ["SwBgApps"] = new("Bloquear Apps en Segundo Plano", "Impide que aplicaciones cerradas sigan gastando memoria RAM oculta.", "Pestaña 2: Procesos y RAM", 2, "RowSwBgApps"),
+            ["SwFastUi"] = new("Apertura instantánea de ventanas y menús", "Reduce el retardo de menús de 400 ms a 20 ms y desactiva la animación lenta al abrir o minimizar ventanas.", "Pestaña 2: Procesos y RAM", 2, "RowSwFastUi"),
             ["SwNagle"] = new("Ajuste de latencia TCP", "Cambia los parámetros de Nagle y confirmaciones TCP en adaptadores con una IP configurada.", "Pestaña 3: Red y Ratón", 3, "RowSwNagle"),
             ["SwUsbPcie"] = new("Evitar Cortes de Energía en USB y Gráfica", "Impide que Windows ahorre energía en los puertos del ratón o en la gráfica.", "Pestaña 3: Red y Ratón", 3, "RowSwUsbPcie")
         };
@@ -962,6 +963,7 @@ namespace WinPulseOptimizer
             SwUsbPcie.IsChecked = s.DisableUsbPciePowerSave;
             SwNagle.IsChecked = s.DisableNagle;
             SwBgApps.IsChecked = s.LimitBackgroundApps;
+            SwFastUi.IsChecked = OptimizerEngine.IsFastUiResponseEnabled();
         }
 
         private async void Switch_Changed(object sender, RoutedEventArgs e)
@@ -990,9 +992,10 @@ namespace WinPulseOptimizer
                 return;
             }
 
+            string? profileTag = cb.Name == "SwFastUi" ? null : "CUSTOM";
             await ApplySystemChangeAsync(
                 $"{(isOn ? "Activaste" : "Desactivaste")}: {meta.Title}",
-                meta.PlainDesc, meta.SectionName, meta.TabIndex, meta.RowName, new(SystemAction.Tweak, cb.Name, isOn), "CUSTOM");
+                meta.PlainDesc, meta.SectionName, meta.TabIndex, meta.RowName, new(SystemAction.Tweak, cb.Name, isOn), profileTag);
         }
 
         private async void BtnJugar_Click(object sender, RoutedEventArgs e) =>
