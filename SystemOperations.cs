@@ -17,7 +17,7 @@ internal sealed record SystemRequest(SystemAction Action, string? Name = null, b
 {
     internal bool RequiresAdministrator => Action switch
     {
-        SystemAction.Tweak => Name is not ("SwGameMode" or "SwWindowedOpt" or "SwBgApps" or "SwFastUi" or "SwMouseAccel"),
+        SystemAction.Tweak => Name is not ("SwGameMode" or "SwWindowedOpt" or "SwBgApps" or "SwFastUi" or "SwMouseAccel" or "SwTransparency"),
         SystemAction.StartupApp => !UserScope,
         _ => true
     };
@@ -91,6 +91,7 @@ internal static class SystemOperations
         "SwBgApps" => () => OptimizerEngine.SetBackgroundApps(enabled),
         "SwFastUi" => () => OptimizerEngine.SetFastUiResponse(enabled),
         "SwMouseAccel" => () => OptimizerEngine.SetMouseAccelerationDisabled(enabled),
+        "SwTransparency" => () => OptimizerEngine.SetTransparencyDisabled(enabled),
         _ => throw new InvalidDataException("El ajuste solicitado no es compatible.")
     };
 

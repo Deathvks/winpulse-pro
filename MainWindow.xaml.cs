@@ -37,6 +37,7 @@ namespace WinPulseOptimizer
             ["SwGameDvr"] = new("Apagar Grabación Oculta de Pantalla", "Evita que Windows esté grabando vídeo en segundo plano gastando memoria gráfica.", "Pestaña 2: Procesos y RAM", 2, "RowSwGameDvr"),
             ["SwBgApps"] = new("Bloquear Apps en Segundo Plano", "Impide que aplicaciones cerradas sigan gastando memoria RAM oculta.", "Pestaña 2: Procesos y RAM", 2, "RowSwBgApps"),
             ["SwFastUi"] = new("Apertura instantánea de ventanas y menús", "Reduce el retardo de menús de 400 ms a 20 ms y desactiva la animación lenta al abrir o minimizar ventanas.", "Pestaña 2: Procesos y RAM", 2, "RowSwFastUi"),
+            ["SwTransparency"] = new("Desactivar transparencias de Windows", "Desactiva efectos Acrylic/Mica (EnableTransparency = 0) para aligerar el compositor DWM.", "Pestaña 2: Procesos y RAM", 2, "RowSwTransparency"),
             ["SwNagle"] = new("Ajuste de latencia TCP", "Cambia los parámetros de Nagle y confirmaciones TCP en adaptadores con una IP configurada.", "Pestaña 3: Red y Ratón", 3, "RowSwNagle"),
             ["SwUsbPcie"] = new("Evitar Cortes de Energía en USB y Gráfica", "Impide que Windows ahorre energía en los puertos del ratón o en la gráfica.", "Pestaña 3: Red y Ratón", 3, "RowSwUsbPcie"),
             ["SwMouseAccel"] = new("Desactivar aceleración del ratón", "Desactiva «Mejorar la precisión del puntero» en Windows para obtener una respuesta lineal 1:1.", "Pestaña 3: Red y ratón", 3, "RowSwMouseAccel")
@@ -967,6 +968,7 @@ namespace WinPulseOptimizer
             SwBgApps.IsChecked = s.LimitBackgroundApps;
             SwFastUi.IsChecked = OptimizerEngine.IsFastUiResponseEnabled();
             SwMouseAccel.IsChecked = OptimizerEngine.IsMouseAccelerationDisabled();
+            SwTransparency.IsChecked = OptimizerEngine.IsTransparencyDisabled();
         }
 
         private async void Switch_Changed(object sender, RoutedEventArgs e)
@@ -995,7 +997,7 @@ namespace WinPulseOptimizer
                 return;
             }
 
-            string? profileTag = cb.Name is "SwFastUi" or "SwMouseAccel" ? null : "CUSTOM";
+            string? profileTag = cb.Name is "SwFastUi" or "SwMouseAccel" or "SwTransparency" ? null : "CUSTOM";
             await ApplySystemChangeAsync(
                 $"{(isOn ? "Activaste" : "Desactivaste")}: {meta.Title}",
                 meta.PlainDesc, meta.SectionName, meta.TabIndex, meta.RowName, new(SystemAction.Tweak, cb.Name, isOn), profileTag);

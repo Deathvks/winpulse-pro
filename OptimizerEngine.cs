@@ -83,6 +83,10 @@ namespace WinPulseOptimizer
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, int[] pvParam, uint fWinIni);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, string lParam,
+            uint flags, uint timeout, out IntPtr result);
+
         private static readonly string BackupDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinPulseOptimizer", "Backups");
 
@@ -897,6 +901,20 @@ namespace WinPulseOptimizer
             NotifyMouseParameters(t1, t2, speed);
         }
 
+        public static bool IsTransparencyDisabled() =>
+            GetDword(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "Themes", "Personalize"),
+                "EnableTransparency", 1) == 0;
+
+        public static void SetTransparencyDisabled(bool disable)
+        {
+            SetDword(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "Themes", "Personalize"),
+                "EnableTransparency", disable ? 0 : 1);
+            NotifyPersonalizationChanged();
+        }
+
+        internal static void NotifyPersonalizationChanged() =>
+            SendMessageTimeout(new IntPtr(0xFFFF), 0x001A, IntPtr.Zero, "ImmersiveColorSet", 0x0002, 500, out _);
+
         public static Task<int> CleanTemporaryFilesAsync() => Task.Run(() =>
         {
             string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -963,6 +981,7 @@ namespace WinPulseOptimizer
             SetBackgroundApps(false);
             SetFastUiResponse(false);
             SetMouseAccelerationDisabled(false);
+            SetTransparencyDisabled(false);
             ApplyProfilePowerMode(UsageProfile.FactoryDefault, plan);
         }
 

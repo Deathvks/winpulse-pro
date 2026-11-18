@@ -656,12 +656,22 @@
                                     </DockPanel>
                                 </Border>
 
-                                <Border x:Name="RowSwFastUi" Style="{StaticResource SettingRow}" Margin="0">
+                                <Border x:Name="RowSwFastUi" Style="{StaticResource SettingRow}">
                                     <DockPanel>
                                         <CheckBox x:Name="SwFastUi" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="14,0,0,0"/>
                                         <StackPanel>
                                             <TextBlock Text="Apertura instantánea de ventanas y menús (sin permiso extra)" FontSize="13" FontWeight="SemiBold"/>
                                             <TextBlock Text="Reduce el retardo de menús (400 → 20 ms) y quita la animación lenta al abrir o minimizar ventanas para que la interfaz responda al instante." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <Border x:Name="RowSwTransparency" Style="{StaticResource SettingRow}" Margin="0">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwTransparency" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Checked="Switch_Changed" Unchecked="Switch_Changed" Margin="14,0,0,0"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Desactivar transparencias de Windows (sin permiso extra)" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Desactiva efectos translúcidos Acrylic/Mica en barra y menús (EnableTransparency = 0) para aliviar la carga del compositor DWM y ahorrar RAM de vídeo." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>

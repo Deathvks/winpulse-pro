@@ -133,6 +133,7 @@ namespace WinPulseOptimizer
             "MouseSpeed" => "Aceleración del ratón (MouseSpeed)",
             "MouseThreshold1" => "Umbral 1 de aceleración del ratón",
             "MouseThreshold2" => "Umbral 2 de aceleración del ratón",
+            "EnableTransparency" => "Transparencias de Windows",
             _ => name
         };
 

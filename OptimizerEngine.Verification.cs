@@ -62,6 +62,8 @@ public static partial class OptimizerEngine
             "SwMouseAccel" => IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Mouse"), "MouseSpeed", enabled ? "0" : "1") &&
                 IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Mouse"), "MouseThreshold1", enabled ? "0" : "6") &&
                 IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Mouse"), "MouseThreshold2", enabled ? "0" : "10"),
+            "SwTransparency" => IsRegistryDwordEqual(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "Themes", "Personalize"),
+                "EnableTransparency", enabled ? 0 : 1),
             "SwNagle" => !NagleDiffers(enabled, requireAdapter: enabled),
             "SwSuspendServices" => !ServicesDiffer(store, enabled),
             "SwCoreParking" => IsCoreParkingInState(enabled),
