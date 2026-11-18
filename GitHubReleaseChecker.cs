@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +27,8 @@ internal static class GitHubReleaseChecker
         using var request = new HttpRequestMessage(HttpMethod.Get, LatestEndpoint);
         request.Headers.UserAgent.ParseAdd("WinPulsePro/" + installedVersion.ToString(3));
         request.Headers.Accept.ParseAdd("application/vnd.github+json");
+        request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true, NoStore = true, MustRevalidate = true };
+        request.Headers.Pragma.ParseAdd("no-cache");
         using var response = await Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();

@@ -29,22 +29,26 @@ public partial class MainWindow
         BtnUpdateStatus.Content = $"v{current} · Buscar actualización";
     }
 
-    private void RenderUpdateButton(Version current, bool upToDate = false)
+    private void RenderUpdateButton(Version current, DateTimeOffset? checkedAtUtc = null)
     {
         if (BtnUpdateStatus == null) return;
         if (_availableUpdate is { } available)
         {
-            BtnUpdateStatus.Style = (Style)FindResource("PrimaryBtn");
+            var primaryStyle = (Style)FindResource("PrimaryBtn");
+            if (!ReferenceEquals(BtnUpdateStatus.Style, primaryStyle))
+                BtnUpdateStatus.Style = primaryStyle;
             BtnUpdateStatus.Content = $"Actualizar a v{available.Version.ToString(3)}";
             BtnUpdateStatus.ToolTip = "Hay una nueva versión disponible en GitHub. Haz clic para verla o descargarla.";
         }
         else
         {
-            BtnUpdateStatus.Style = (Style)FindResource("LinkBtn");
-            BtnUpdateStatus.Content = upToDate
-                ? $"v{current.ToString(3)} · Al día"
-                : $"v{current.ToString(3)} · Buscar actualización";
-            BtnUpdateStatus.ToolTip = "Comprobar si hay una versión nueva disponible en GitHub.";
+            var linkStyle = (Style)FindResource("LinkBtn");
+            if (!ReferenceEquals(BtnUpdateStatus.Style, linkStyle))
+                BtnUpdateStatus.Style = linkStyle;
+            BtnUpdateStatus.Content = $"v{current.ToString(3)} · Buscar actualización";
+            BtnUpdateStatus.ToolTip = checkedAtUtc is DateTimeOffset at
+                ? $"Última comprobación a las {at.ToLocalTime():HH:mm:ss}: al día. Haz clic cuando quieras para volver a buscar en GitHub."
+                : "Comprobar si hay una versión nueva disponible en GitHub.";
         }
     }
 
@@ -86,22 +90,31 @@ public partial class MainWindow
             BtnUpdateStatus.Content = "Comprobando…";
         }
 
+        DateTimeOffset? verifiedAt = null;
         try
         {
             var latest = await GitHubReleaseChecker.GetNewerReleaseAsync(current, CancellationToken.None);
             _lastSessionUpdateCheckUtc = now;
             _lastUpdateCheckUtc = now;
             _lastFailedUpdateCheckUtc = default;
+            verifiedAt = now;
 
-            var store = HistoryManager.Load();
-            store.LastUpdateCheckUtc = now;
-            HistoryManager.Save(store);
+            try
+            {
+                var store = HistoryManager.Load();
+                store.LastUpdateCheckUtc = now;
+                HistoryManager.Save(store);
+            }
+            catch
+            {
+                // No bloquea comprobaciones manuales si falla guardar la marca de tiempo local.
+            }
 
             if (latest is { } available)
             {
                 bool firstTime = _availableUpdate == null || _availableUpdate.Version != available.Version;
                 _availableUpdate = available;
-                RenderUpdateButton(current);
+                RenderUpdateButton(current, verifiedAt);
                 if (firstTime)
                     Log($"Nueva versión disponible: WinPulse Pro {available.Version.ToString(3)}.");
                 if (manual || CanCheckForUpdate)
@@ -113,7 +126,7 @@ public partial class MainWindow
             {
                 _availableUpdate = null;
                 _pendingUpdate = null;
-                RenderUpdateButton(current, upToDate: manual);
+                RenderUpdateButton(current, verifiedAt);
                 if (manual)
                 {
                     Log($"Comprobación de actualizaciones: ya tienes la última versión (v{current.ToString(3)}).");
@@ -123,7 +136,7 @@ public partial class MainWindow
                 }
             }
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or UriFormatException)
         {
             _lastFailedUpdateCheckUtc = now;
             RenderUpdateButton(current);
@@ -135,14 +148,18 @@ public partial class MainWindow
                     return;
                 }
                 Log($"No se pudo comprobar si hay actualizaciones. {ex.Message}");
-                System.Windows.MessageBox.Show(this,
-                    "No se pudo consultar GitHub para comprobar si hay actualizaciones. Revisa tu conexión a internet e inténtalo de nuevo.",
+                string message = ex is HttpRequestException httpEx &&
+                    httpEx.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.TooManyRequests
+                    ? "GitHub ha limitado temporalmente las consultas anónimas desde tu IP. Inténtalo de nuevo en unos minutos."
+                    : "No se pudo consultar GitHub para comprobar si hay actualizaciones. Revisa tu conexión a internet e inténtalo de nuevo.";
+                System.Windows.MessageBox.Show(this, message,
                     "Comprobación de actualizaciones", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         finally
         {
             _checkingForUpdate = false;
+            RenderUpdateButton(current, verifiedAt);
             BtnUpdateStatus.IsEnabled = true;
         }
     }
