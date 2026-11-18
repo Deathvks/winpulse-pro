@@ -157,7 +157,7 @@
                                                        Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                         </WrapPanel>
                                         <TextBlock x:Name="TxtQuickCleanupHint"
-                                                   Text="Reduce la memoria ocupada por procesos inactivos y borra temporales (%TEMP%, D3DSCache y caché NVIDIA) sin cerrar tus apps."
+                                                   Text="Reduce la memoria ocupada por procesos inactivos y borra temporales (%TEMP%, Windows\Temp, D3DSCache y caché NVIDIA/AMD) sin cerrar tus apps."
                                                    FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </DockPanel>

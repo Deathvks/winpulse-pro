@@ -44,8 +44,8 @@ internal static class SystemOperations
             case SystemAction.RestorePoint:
                 return new(Notice: await OptimizerEngine.CreateRestorePointAsync());
             case SystemAction.DiskMaintenance:
-                await OptimizerEngine.CompleteDiskMaintenanceAsync();
-                return new();
+                int systemTempDeleted = await OptimizerEngine.CompleteDiskMaintenanceAsync();
+                return new(Changed: systemTempDeleted > 0, Notice: systemTempDeleted.ToString(System.Globalization.CultureInfo.InvariantCulture));
             default:
                 Action apply = request.Action switch
                 {

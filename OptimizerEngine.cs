@@ -903,12 +903,32 @@ namespace WinPulseOptimizer
             string[] dirs =
             {
                 Path.GetTempPath(),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp"),
                 Path.Combine(localApp, "D3DSCache"),
                 Path.Combine(localApp, "NVIDIA", "DXCache"),
-                Path.Combine(localApp, "NVIDIA", "GLCache")
+                Path.Combine(localApp, "NVIDIA", "GLCache"),
+                Path.Combine(localApp, "AMD", "DxCache"),
+                Path.Combine(localApp, "AMD", "DxcCache"),
+                Path.Combine(localApp, "AMD", "GLCache"),
+                Path.Combine(localApp, "AMD", "VkCache")
             };
 
+            return DeleteFilesInDirectories(dirs);
+        });
+
+        public static Task<int> CompleteDiskMaintenanceAsync() => Task.Run(() =>
+        {
+            int windowsTempDeleted = DeleteFilesInDirectories(new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp")
+            });
+            RunCommand("ipconfig.exe", "/flushdns");
+            string systemDrive = Path.GetPathRoot(Environment.SystemDirectory)!;
+            RunPowerShell($"Optimize-Volume -DriveLetter '{systemDrive[0]}' -ReTrim", timeoutMs: 120_000);
+            return windowsTempDeleted;
+        });
+
+        private static int DeleteFilesInDirectories(System.Collections.Generic.IEnumerable<string> directories)
+        {
             int filesDeleted = 0;
             var options = new EnumerationOptions
             {
@@ -916,23 +936,15 @@ namespace WinPulseOptimizer
                 IgnoreInaccessible = true,
                 AttributesToSkip = FileAttributes.ReparsePoint
             };
-            foreach (var dir in dirs.Where(Directory.Exists))
+            foreach (var dir in directories.Where(Directory.Exists))
             {
                 foreach (var file in Directory.EnumerateFiles(dir, "*", options))
                 {
                     try { File.Delete(file); filesDeleted++; } catch { }
                 }
             }
-
             return filesDeleted;
-        });
-
-        public static Task CompleteDiskMaintenanceAsync() => Task.Run(() =>
-        {
-            RunCommand("ipconfig.exe", "/flushdns");
-            string systemDrive = Path.GetPathRoot(Environment.SystemDirectory)!;
-            RunPowerShell($"Optimize-Volume -DriveLetter '{systemDrive[0]}' -ReTrim", timeoutMs: 120_000);
-        });
+        }
 
         public static void RestoreDefaults()
         {

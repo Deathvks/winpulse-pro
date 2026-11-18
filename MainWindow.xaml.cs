@@ -1184,10 +1184,16 @@ namespace WinPulseOptimizer
                 TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
                 Log($"{cleanup} Iniciando la optimización del disco.");
 
-                await RunSystemRequestAsync(new(SystemAction.DiskMaintenance), "Vaciar la caché DNS y optimizar el disco del sistema.");
+                var diskResult = await RunSystemRequestAsync(new(SystemAction.DiskMaintenance),
+                    "Limpiar Windows\\Temp, vaciar la caché DNS y optimizar el disco del sistema.");
+                int systemFilesDeleted = int.TryParse(diskResult.Notice, System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out int sysDeleted) ? sysDeleted : 0;
+                int totalDeleted = filesDeleted + systemFilesDeleted;
+                string fullCleanup = $"Archivos eliminados: {totalDeleted} (usuario/caché GPU: {filesDeleted}, Windows\\Temp: {systemFilesDeleted}). {DescribeMemoryTrimProcesses(trim)}";
                 RefreshTopProcesses();
-                TxtAfterSub.Text = measurementDetail;
-                string result = $"{cleanup} Windows confirmó el vaciado de DNS y la operación ReTrim.";
+                TxtAfterSub.Text = fullCleanup;
+                TxtQuickCleanupHint.Text = $"Última limpieza: {measurement.Replace(Environment.NewLine, " · ")} · {totalDeleted} archivos eliminados.";
+                string result = $"{fullCleanup} Windows confirmó el vaciado de DNS y la operación ReTrim.";
                 RecordAction("Mantenimiento", result, "Pestaña 0: Opciones de Energía y Equivalencias", 0,
                     "RowMaintenance", measurement);
                 Log($"Mantenimiento completado. {result} {measurement}");
