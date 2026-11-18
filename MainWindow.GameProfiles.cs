@@ -62,7 +62,110 @@ namespace WinPulseOptimizer
             if (index < 0) store.GameProfiles.Add(profile);
             else store.GameProfiles[index] = profile;
             if (!SaveGameProfiles(store, $"Guardaste {profile.Name}.", profile.Id)) return;
+            if (profile.PreferDedicatedGpu && editor.SelectedExecutablePaths.Count > 0)
+            {
+                int added = 0;
+                foreach (string fullPath in editor.SelectedExecutablePaths)
+                {
+                    string normalizedExe = HardwareMonitor.NormalizeExecutableName(Path.GetFileName(fullPath));
+                    if (!profile.Executables.Contains(normalizedExe, StringComparer.OrdinalIgnoreCase)) continue;
+                    try
+                    {
+                        if (OptimizerEngine.SetDedicatedGpuForExecutable(fullPath, enable: true)) added++;
+                    }
+                    catch { }
+                }
+                if (added > 0) RefreshDgpuGamesList();
+            }
             if (_activeProfileTag == profile.Tag) RestoreSavedProfileBanner(profile.Tag);
+        }
+
+        private void RefreshDgpuGamesList()
+        {
+            var items = OptimizerEngine.GetDedicatedGpuGames();
+            LstDgpuGames.ItemsSource = items;
+            TxtNoDgpuGames.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void AutoForceDgpu_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading) return;
+            var store = HistoryManager.Load();
+            store.AutoForceDedicatedGpu = SwAutoForceDgpu.IsChecked == true;
+            if (!HistoryManager.Save(store))
+            {
+                _loading = true;
+                SwAutoForceDgpu.IsChecked = !store.AutoForceDedicatedGpu;
+                _loading = false;
+                TxtDgpuGamesStatus.Text = "No se pudo guardar la preferencia.";
+                return;
+            }
+            _lastDgpuAppliedKey = null;
+            TxtDgpuGamesStatus.Text = store.AutoForceDedicatedGpu
+                ? "Activado: WinPulse asignará dGPU al detectar un juego."
+                : "Desactivado: solo se aplicará a los .exe añadidos o con perfil dGPU.";
+        }
+
+        private void BtnAddDgpuGame_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Selecciona el ejecutable del juego",
+                Filter = "Ejecutables (*.exe)|*.exe",
+                CheckFileExists = true,
+                Multiselect = true
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            int added = 0;
+            foreach (string fullPath in dialog.FileNames)
+            {
+                try
+                {
+                    if (OptimizerEngine.SetDedicatedGpuForExecutable(fullPath, enable: true))
+                        added++;
+                }
+                catch (Exception ex)
+                {
+                    TxtDgpuGamesStatus.Text = ex.Message;
+                }
+            }
+            RefreshDgpuGamesList();
+            if (added > 0)
+            {
+                string label = added == 1 ? Path.GetFileName(dialog.FileNames[0]) : $"{added} juegos";
+                TxtDgpuGamesStatus.Text = $"Preferencia dGPU guardada para {label}. Se aplicará al abrir el juego.";
+                Log($"Gráfica dedicada (Alto rendimiento) configurada para {label}.");
+            }
+            else if (dialog.FileNames.Length > 0)
+            {
+                TxtDgpuGamesStatus.Text = "El ejecutable ya tenía asignada la gráfica dedicada.";
+            }
+        }
+
+        private void BtnRefreshDgpuGames_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshDgpuGamesList();
+            TxtDgpuGamesStatus.Text = "Lista actualizada desde Gráficos de Windows.";
+        }
+
+        private void BtnRemoveDgpuGame_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string path) return;
+            try
+            {
+                if (OptimizerEngine.SetDedicatedGpuForExecutable(path, enable: false))
+                {
+                    RefreshDgpuGamesList();
+                    string file = Path.GetFileName(path);
+                    TxtDgpuGamesStatus.Text = $"Preferencia dGPU eliminada para {file}.";
+                    Log($"Preferencia de gráfica dedicada eliminada para {file}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                TxtDgpuGamesStatus.Text = ex.Message;
+            }
         }
 
         private void BtnDeleteGameProfile_Click(object sender, RoutedEventArgs e)

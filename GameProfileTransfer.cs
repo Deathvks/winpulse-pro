@@ -12,7 +12,8 @@ internal sealed record PortableGameProfile(
     [property: JsonRequired] string Name,
     [property: JsonRequired] UsageProfile PowerBase,
     [property: JsonRequired] TweakState Adjustments,
-    [property: JsonRequired] string[] Executables);
+    [property: JsonRequired] string[] Executables,
+    bool PreferDedicatedGpu = false);
 
 internal sealed record GameProfileImportRow(string Name, string Executables, string Result);
 
@@ -47,7 +48,8 @@ internal static class GameProfileTransfer
     internal static void Export(string path, IEnumerable<GameProfile> profiles)
     {
         var data = new ProfileFile(FileFormat, Version, profiles.Select(profile => new PortableGameProfile(
-            profile.Name, profile.PowerBase, profile.Adjustments, profile.Executables.Select(exe => exe + ".exe").ToArray())).ToArray());
+            profile.Name, profile.PowerBase, profile.Adjustments,
+            profile.Executables.Select(exe => exe + ".exe").ToArray(), profile.PreferDedicatedGpu)).ToArray());
         string destination = Path.GetFullPath(path);
         string temporary = Path.Combine(Path.GetDirectoryName(destination)!, $".{Guid.NewGuid():N}.tmp");
         try
@@ -108,7 +110,8 @@ internal static class GameProfileTransfer
             .ToDictionary(assignment => assignment.exe, assignment => assignment.Name, Compare);
         var source = incoming.ToArray();
         bool HasSameSettings(PortableGameProfile imported, GameProfile local) =>
-            local.PowerBase == imported.PowerBase && local.Adjustments == imported.Adjustments;
+            local.PowerBase == imported.PowerBase && local.Adjustments == imported.Adjustments &&
+            local.PreferDedicatedGpu == imported.PreferDedicatedGpu;
         var identical = source.Where(profile => localByName.TryGetValue(profile.Name, out var local) &&
             HasSameSettings(profile, local) && local.Executables.ToHashSet(Compare).SetEquals(profile.Executables))
             .Select(profile => profile.Name).ToHashSet(Compare);
@@ -149,7 +152,7 @@ internal static class GameProfileTransfer
             {
                 var imported = new GameProfile(current?.Id ?? Guid.NewGuid(),
                     current != null && HasSameSettings(profile, current) ? current.Revision : Guid.NewGuid(),
-                    profile.Name, profile.PowerBase, profile.Adjustments, profile.Executables);
+                    profile.Name, profile.PowerBase, profile.Adjustments, profile.Executables, profile.PreferDedicatedGpu);
                 if (current == null)
                 {
                     merged.Add(imported);

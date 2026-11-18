@@ -17,17 +17,20 @@ namespace WinPulseOptimizer
         private bool _manualAutomationOverride;
         private long _retryAutomationAt;
         private string? _lastAutomationPermissionNotice;
+        private string? _lastDgpuAppliedKey;
         private string[] _includedGames = Array.Empty<string>();
         private string[] _excludedGames = Array.Empty<string>();
 
         private void LoadAutomationRules(AuditStore store)
         {
             SwGameOnBattery.IsChecked = store.AutoGameOnBattery;
+            SwAutoForceDgpu.IsChecked = store.AutoForceDedicatedGpu;
             _includedGames = (store.IncludedGameExecutables ?? new()).Select(HardwareMonitor.NormalizeExecutableName).ToArray();
             _excludedGames = (store.ExcludedGameExecutables ?? new()).Select(HardwareMonitor.NormalizeExecutableName).ToArray();
             TxtIncludedGames.Text = string.Join(Environment.NewLine, _includedGames.Select(game => game + ".exe"));
             TxtExcludedGames.Text = string.Join(Environment.NewLine, _excludedGames.Select(game => game + ".exe"));
             LoadGameProfiles(store.GameProfiles);
+            RefreshDgpuGamesList();
         }
 
         private void BtnSaveGameRules_Click(object sender, RoutedEventArgs e)
@@ -140,6 +143,26 @@ namespace WinPulseOptimizer
                 }
                 var matched = profiles.FirstOrDefault(profile =>
                     game != null && profile.Executables.Contains(game, StringComparer.OrdinalIgnoreCase));
+                bool wantDgpu = running != null && (matched?.PreferDedicatedGpu == true || SwAutoForceDgpu.IsChecked == true);
+                if (running != null && wantDgpu)
+                {
+                    string checkKey = $"{running.Pid}:{running.CreationTime}";
+                    if (_lastDgpuAppliedKey != checkKey)
+                    {
+                        _lastDgpuAppliedKey = checkKey;
+                        string? exePath = await Task.Run(() => OptimizerEngine.TryGetProcessExecutablePath(running.Pid));
+                        if (exePath != null && OptimizerEngine.SetDedicatedGpuForExecutable(exePath, enable: true))
+                        {
+                            RefreshDgpuGamesList();
+                            TxtDgpuGamesStatus.Text = $"dGPU asignada a {running.Name}.exe para su próximo inicio.";
+                            Log($"Gráfica dedicada (Alto rendimiento) guardada para {running.Name}.exe.");
+                        }
+                    }
+                }
+                else if (running == null)
+                {
+                    _lastDgpuAppliedKey = null;
+                }
                 string? desired = ChooseAutomaticProfile(onAc, game != null, SwGameOnBattery.IsChecked == true,
                     SwAutoBattery.IsChecked == true, matched);
                 if (_automationTargetKnown && _lastAutomationTarget != desired) ResetAutomationOverride();

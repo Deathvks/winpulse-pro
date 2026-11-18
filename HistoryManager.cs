@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 namespace WinPulseOptimizer
 {
     public sealed record GameProfile(Guid Id, Guid Revision, string Name, UsageProfile PowerBase, TweakState Adjustments,
-        string[] Executables)
+        string[] Executables, bool PreferDedicatedGpu = false)
     {
         internal string Tag => $"GAME:{Id:N}:{Revision:N}";
         internal bool OwnsTag(string tag) => tag.StartsWith($"GAME:{Id:N}:", StringComparison.Ordinal);
@@ -55,6 +55,7 @@ namespace WinPulseOptimizer
         public bool AutoGameSwitch { get; set; } = true;
         public bool AutoBatteryChill { get; set; } = true;
         public bool AutoGameOnBattery { get; set; }
+        public bool AutoForceDedicatedGpu { get; set; }
         public bool AdaptiveMemoryEnabled { get; set; }
         public List<string> AdaptiveMemoryApps { get; set; } = new();
         public bool? AdaptiveMemoryAutomatic { get; set; }

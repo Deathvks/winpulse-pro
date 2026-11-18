@@ -497,7 +497,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SectionCard}" Margin="0">
+                        <Border Style="{StaticResource SectionCard}">
                             <StackPanel>
                                 <TextBlock Text="PROCESADOR Y PRIORIDAD" Style="{StaticResource SectionKicker}"/>
                                 <TextBlock Text="Estabilidad de fotogramas, núcleos activos con corriente y prioridad multimedia." Style="{StaticResource SectionSubtitle}"/>
@@ -531,6 +531,61 @@
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="CardDedicatedGpuGames" Style="{StaticResource SectionCard}" Margin="0">
+                            <StackPanel>
+                                <TextBlock Text="GRÁFICA DEDICADA POR JUEGO (DGPU)" Style="{StaticResource SectionKicker}"/>
+                                <TextBlock Text="Asigna «Alto rendimiento» en Gráficos de Windows (HKCU, sin permiso extra) para evitar que los juegos usen la gráfica integrada." Style="{StaticResource SectionSubtitle}"/>
+
+                                <Border Style="{StaticResource SettingRow}">
+                                    <DockPanel>
+                                        <CheckBox x:Name="SwAutoForceDgpu" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}"
+                                                  Checked="AutoForceDgpu_Changed" Unchecked="AutoForceDgpu_Changed" Margin="14,0,0,0"
+                                                  AutomationProperties.Name="Asignar dGPU automáticamente al detectar juegos"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Asignar gráfica dedicada automáticamente al detectar juegos" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Cuando el vigilante detecte un juego incluido, lo registra con Alto rendimiento para su próximo inicio."
+                                                       FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <DockPanel Margin="0,2,0,12">
+                                    <WrapPanel DockPanel.Dock="Left">
+                                        <Button Content="Añadir juego (.exe)…" Style="{StaticResource PrimaryBtn}" Click="BtnAddDgpuGame_Click" Margin="0,0,8,0"/>
+                                        <Button Content="Actualizar lista" Style="{StaticResource SecondaryBtn}" Click="BtnRefreshDgpuGames_Click"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="TxtDgpuGamesStatus" Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                               VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                                </DockPanel>
+
+                                <TextBlock x:Name="TxtNoDgpuGames" Text="No hay juegos configurados con preferencia dGPU."
+                                           Foreground="{DynamicResource QuietBrush}" FontSize="12" Margin="2,2,0,0"/>
+
+                                <ItemsControl x:Name="LstDgpuGames">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#131418" BorderBrush="#26282E" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,8">
+                                                <DockPanel>
+                                                    <Button DockPanel.Dock="Right" Content="Quitar" Style="{StaticResource DangerBtn}" Padding="10,5"
+                                                            Tag="{Binding ExecutablePath}" Click="BtnRemoveDgpuGame_Click" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                                    <StackPanel VerticalAlignment="Center">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextBrush}"/>
+                                                            <TextBlock Text="  dGPU" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding ExecutablePath}" FontFamily="{DynamicResource MonoFont}" FontSize="11"
+                                                                   Foreground="{DynamicResource QuietBrush}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding ExecutablePath}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </Border>
                     </StackPanel>

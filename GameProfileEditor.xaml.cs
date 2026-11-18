@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -18,9 +19,11 @@ public partial class GameProfileEditor : Window
 
     private readonly GameProfile? _previous;
     private readonly GameProfile[] _existing;
+    private readonly List<string> _selectedExecutablePaths = new();
     private Adjustment[] _adjustments = [];
 
     internal GameProfile? Profile { get; private set; }
+    internal IReadOnlyList<string> SelectedExecutablePaths => _selectedExecutablePaths;
 
     internal GameProfileEditor(GameProfile? previous, GameProfile[] existing)
     {
@@ -38,6 +41,7 @@ public partial class GameProfileEditor : Window
         TxtName.Text = previous?.Name ?? "";
         if (previous != null)
             TxtExecutables.Text = string.Join(Environment.NewLine, previous.Executables.Select(exe => exe + ".exe"));
+        ChkPreferDedicatedGpu.IsChecked = previous?.PreferDedicatedGpu == true;
         LoadAdjustments(previous?.Adjustments ?? MainWindow.DefaultProfileAdjustments(UsageProfile.GamingMax));
     }
 
@@ -77,6 +81,11 @@ public partial class GameProfileEditor : Window
             Multiselect = true
         };
         if (dialog.ShowDialog(this) != true) return;
+        foreach (string fullPath in dialog.FileNames)
+        {
+            if (!_selectedExecutablePaths.Contains(fullPath, StringComparer.OrdinalIgnoreCase))
+                _selectedExecutablePaths.Add(fullPath);
+        }
         var names = dialog.FileNames.Select(Path.GetFileName);
         TxtExecutables.Text = string.Join(Environment.NewLine,
             new[] { TxtExecutables.Text.Trim() }.Concat(names).Where(name => !string.IsNullOrEmpty(name)));
@@ -101,9 +110,11 @@ public partial class GameProfileEditor : Window
             var settings = _adjustments.Select(adjustment => adjustment.Enabled).ToArray();
             var tweaks = new TweakState(settings[0], settings[1], settings[2], settings[3], settings[4], settings[5],
                 settings[6], settings[7], settings[8], settings[9], settings[10], settings[11]);
-            Guid revision = _previous != null && _previous.PowerBase == choice.Profile && _previous.Adjustments == tweaks
+            bool preferDgpu = ChkPreferDedicatedGpu.IsChecked == true;
+            Guid revision = _previous != null && _previous.PowerBase == choice.Profile && _previous.Adjustments == tweaks &&
+                _previous.PreferDedicatedGpu == preferDgpu
                 ? _previous.Revision : Guid.NewGuid();
-            Profile = new(_previous?.Id ?? Guid.NewGuid(), revision, name, choice.Profile, tweaks, executables);
+            Profile = new(_previous?.Id ?? Guid.NewGuid(), revision, name, choice.Profile, tweaks, executables, preferDgpu);
             DialogResult = true;
         }
         catch (FormatException ex)
