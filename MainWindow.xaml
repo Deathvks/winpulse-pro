@@ -9,7 +9,7 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibility"/>
     </Window.Resources>
 
-    <Grid x:Name="MainLayout" Margin="28,22" SizeChanged="MainLayout_SizeChanged">
+    <Grid x:Name="MainLayout" Margin="26,20" SizeChanged="MainLayout_SizeChanged">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition x:Name="ActivityLogGap" Width="0"/>
@@ -18,19 +18,16 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*" MinHeight="105"/>
+            <RowDefinition Height="*" MinHeight="120"/>
         </Grid.RowDefinitions>
 
         <!-- Cabecera -->
-        <Border Grid.Row="0" Grid.ColumnSpan="3" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="0,0,0,16" Margin="0,0,0,18">
+        <Border Grid.Row="0" Grid.ColumnSpan="3" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="0,0,0,14" Margin="0,0,0,14">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <Border x:Name="BadgePower" Background="Transparent" Padding="6,4" VerticalAlignment="Center" Margin="8,0,12,0">
                         <TextBlock x:Name="TxtPowerState" Text="Conectado a la corriente" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
                     </Border>
-                    <Button x:Name="BtnToggleDashboard" Content="Ocultar resumen" Margin="0,0,8,0"
-                            Style="{StaticResource SecondaryBtn}" Click="BtnToggleDashboard_Click"/>
                     <Button x:Name="BtnToggleActivityLog" Content="Registro" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"
                             ToolTip="Abrir registro de actividad" AutomationProperties.Name="Abrir registro de actividad"
                             Click="BtnToggleActivityLog_Click"/>
@@ -49,70 +46,13 @@
                                 Margin="10,2,0,0" VerticalAlignment="Center" Click="BtnUpdateStatus_Click"
                                 ToolTip="Comprobar si hay una versión nueva disponible en GitHub"/>
                     </WrapPanel>
-                    <TextBlock x:Name="TxtHardware" Text="Detectando equipo..." FontSize="12" Foreground="{DynamicResource QuietBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TxtHardware" Text="Detectando equipo..." FontSize="12" Foreground="{DynamicResource QuietBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </DockPanel>
         </Border>
 
-        <!-- Tarjetas de estado -->
-        <UniformGrid x:Name="DashboardMetrics" Grid.Row="1" Grid.ColumnSpan="3" Columns="3" Margin="0,0,0,16">
-            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14" Margin="0,0,7,0">
-                <StackPanel>
-                    <DockPanel Margin="0,0,0,6">
-                        <Ellipse x:Name="DotLiveTelemetry" DockPanel.Dock="Left" Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource SuccessBrush}" Margin="0,0,8,0">
-                            <Ellipse.Triggers>
-                                <EventTrigger RoutedEvent="Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.3" Duration="0:0:1.1">
-                                                <DoubleAnimation.EasingFunction>
-                                                    <SineEase EasingMode="EaseInOut"/>
-                                                </DoubleAnimation.EasingFunction>
-                                            </DoubleAnimation>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Ellipse.Triggers>
-                        </Ellipse>
-                        <TextBlock Text="AHORA MISMO" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
-                    </DockPanel>
-                    <TextBlock x:Name="TxtLiveCpu" Text="CPU: -- %" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="TxtLiveRam" Text="RAM: -- / -- GB" FontSize="13" Foreground="{DynamicResource TextBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="TxtLiveGpu" Text="GPU" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="TxtLiveGpuStats" Text="Consultando…" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="TxtLiveProcs" Text="Procesos en vivo: --" FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
-                               ToolTip="Incluye los procesos de Windows y de las aplicaciones. El recuento cambia con la actividad del equipo."/>
-                </StackPanel>
-            </Border>
-
-            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14" Margin="7,0,7,0">
-                <StackPanel>
-                    <TextBlock Text="MEDICIÓN DE REFERENCIA" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,6"/>
-                    <TextBlock x:Name="TxtBeforeMain" Text="Sin capturar" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="TxtBeforeSub" Text="Se mide al abrir y antes de cambiar de perfil" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                    <Button Content="Guardar foto" Style="{StaticResource LinkBtn}" Click="BtnCaptureBefore_Click"
-                            HorizontalAlignment="Left" Margin="0,10,0,0"/>
-                </StackPanel>
-            </Border>
-
-            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14" Margin="7,0,0,0">
-                <StackPanel>
-                    <TextBlock x:Name="TxtAfterTitle" Text="ESTADO AL ABRIR" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,6"/>
-                    <TextBlock x:Name="TxtAfterMain" Text="Leyendo el plan activo…" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
-                    <TextBlock x:Name="TxtAfterSub" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                    <WrapPanel Margin="0,10,0,0">
-                        <Button x:Name="BtnLatestProfileReport" Content="Ver ajustes del último perfil"
-                                Style="{StaticResource LinkBtn}" Margin="0,0,8,4"
-                                IsEnabled="False" Click="BtnShowProfileReport_Click"/>
-                        <Button Content="Estado de los ajustes" Style="{StaticResource LinkBtn}" Margin="0,0,0,4"
-                                Click="BtnShowSettingStatus_Click"/>
-                    </WrapPanel>
-                </StackPanel>
-            </Border>
-        </UniformGrid>
-
         <!-- Selector de Planes -->
-        <Border Grid.Row="2" Grid.ColumnSpan="3" x:Name="CardProfiles" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="20,16" Margin="0,0,0,20">
+        <Border Grid.Row="1" Grid.ColumnSpan="3" x:Name="CardProfiles" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,12" Margin="0,0,0,16">
             <StackPanel>
                 <DockPanel LastChildFill="True">
                     <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
@@ -132,46 +72,14 @@
                         <DockPanel>
                             <Ellipse x:Name="DotActiveProfile" DockPanel.Dock="Left" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,5,8,0" VerticalAlignment="Top"/>
                             <TextBlock x:Name="TxtActiveModeLabel" DockPanel.Dock="Left" Text="PLAN ACTIVO:" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,2,6,0" VerticalAlignment="Top"/>
-                            <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="TxtActiveModeTitle" Text="DETECTANDO..." FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                            <Button x:Name="BtnToggleProfileGuide" Content="¿Qué cambia?" Style="{StaticResource LinkBtn}"
+                                    MinHeight="20" Padding="8,1" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"
+                                    Click="BtnToggleProfileGuide_Click"/>
                         </DockPanel>
-                        <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                        <Button x:Name="BtnToggleProfileGuide" Content="¿Qué cambia cada perfil?" Style="{StaticResource LinkBtn}"
-                                HorizontalAlignment="Left" MinHeight="22" Padding="8,2" FontSize="11.5" Margin="0,8,0,0"
-                                Click="BtnToggleProfileGuide_Click"/>
+                        <TextBlock x:Name="TxtActiveModeDesc" Text="Comprobando equipo..." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </DockPanel>
-
-                <Border x:Name="QuickCleanupCallout" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
-                        Padding="0,14,0,0" Margin="0,14,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Width="3" CornerRadius="2" Background="{DynamicResource AccentBrush}" Margin="0,2,14,2"/>
-                        <DockPanel Grid.Column="1" LastChildFill="True">
-                            <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="16,0,0,0">
-                                <Button x:Name="BtnQuickTrimRam" Content="Solo liberar RAM" Style="{StaticResource SecondaryBtn}"
-                                        Padding="13,7" Margin="0,2,8,2" Click="BtnPurgeRam_Click"
-                                        ToolTip="Libera memoria residente de procesos en segundo plano al instante sin cerrar aplicaciones."/>
-                                <Button x:Name="BtnQuickCleanAndRam" Content="Limpiar y liberar RAM" Style="{StaticResource PrimaryBtn}"
-                                        Padding="15,7" Margin="0,2,0,2" Click="BtnMaintenance_Click"
-                                        ToolTip="Borra archivos temporales, libera memoria RAM, vacía caché DNS y optimiza el disco SSD."/>
-                            </WrapPanel>
-                            <StackPanel VerticalAlignment="Center">
-                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="RECOMENDADO AL ENTRAR" FontFamily="{DynamicResource MonoFont}" FontSize="10.5" FontWeight="Bold"
-                                               Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="· Libera RAM y limpia basura antes de empezar" FontSize="12.5" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                                </WrapPanel>
-                                <TextBlock x:Name="TxtQuickCleanupHint"
-                                           Text="Reduce la memoria ocupada por procesos inactivos y borra temporales sin cerrar tus programas. Pulsa para ver la diferencia real."
-                                           FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </DockPanel>
-                    </Grid>
-                </Border>
 
                 <Border x:Name="ProfileGuidePanel" Visibility="Collapsed" Margin="0,12,0,0" Padding="0,12,0,0"
                         BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="0,1,0,0">
@@ -209,11 +117,100 @@
         </Border>
 
         <!-- Pestañas -->
-        <TabControl x:Name="MainTabs" Grid.Row="3" Style="{StaticResource NavigationTabs}" SelectionChanged="MainTabs_SelectionChanged">
-            <!-- PESTAÑA 0: PERFILES Y OPCIONES DE ENERGÍA -->
-            <TabItem Header="Energía y perfiles" Tag="{StaticResource PowerGlyph}" Style="{StaticResource NavigationTab}">
+        <TabControl x:Name="MainTabs" Grid.Row="2" Style="{StaticResource NavigationTabs}" SelectionChanged="MainTabs_SelectionChanged">
+            <!-- PESTAÑA 0: INICIO Y ENERGÍA -->
+            <TabItem Header="Inicio y energía" Tag="{StaticResource PowerGlyph}" Style="{StaticResource NavigationTab}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,0,12,8">
+                        <!-- Recomendado al entrar: limpieza y RAM -->
+                        <Border x:Name="RowMaintenance" Style="{StaticResource SectionCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="3" CornerRadius="2" Background="{DynamicResource AccentBrush}" Margin="0,2,16,2"/>
+                                <DockPanel Grid.Column="1" LastChildFill="True">
+                                    <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="16,0,0,0">
+                                        <Button x:Name="BtnQuickTrimRam" Content="Solo liberar RAM" Style="{StaticResource SecondaryBtn}"
+                                                Padding="13,7" Margin="0,2,8,2" Click="BtnPurgeRam_Click"
+                                                ToolTip="Libera memoria residente de procesos en segundo plano al instante sin cerrar aplicaciones."/>
+                                        <Button x:Name="BtnQuickCleanAndRam" Content="Limpiar y liberar RAM" Style="{StaticResource PrimaryBtn}"
+                                                Padding="15,7" Margin="0,2,0,2" Click="BtnMaintenance_Click"
+                                                ToolTip="Borra temporales, libera memoria RAM, vacía caché DNS y optimiza el disco SSD."/>
+                                    </WrapPanel>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="RECOMENDADO AL ENTRAR" FontFamily="{DynamicResource MonoFont}" FontSize="10.5" FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="· Libera RAM y limpia basura antes de empezar" FontSize="13.5" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                        </WrapPanel>
+                                        <TextBlock x:Name="TxtQuickCleanupHint"
+                                                   Text="Reduce la memoria ocupada por procesos inactivos y borra temporales (%TEMP%, D3DSCache y caché NVIDIA) sin cerrar tus apps."
+                                                   FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Tarjetas de estado en vivo -->
+                        <UniformGrid x:Name="DashboardMetrics" Columns="3" Margin="0,0,0,18">
+                            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,15" Margin="0,0,7,0">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,6">
+                                        <Ellipse x:Name="DotLiveTelemetry" DockPanel.Dock="Left" Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource SuccessBrush}" Margin="0,0,8,0">
+                                            <Ellipse.Triggers>
+                                                <EventTrigger RoutedEvent="Loaded">
+                                                    <BeginStoryboard>
+                                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.3" Duration="0:0:1.1">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <SineEase EasingMode="EaseInOut"/>
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                            </Ellipse.Triggers>
+                                        </Ellipse>
+                                        <TextBlock Text="AHORA MISMO" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    </DockPanel>
+                                    <TextBlock x:Name="TxtLiveCpu" Text="CPU: -- %" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtLiveRam" Text="RAM: -- / -- GB" FontSize="13" Foreground="{DynamicResource TextBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtLiveGpu" Text="GPU" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtLiveGpuStats" Text="Consultando…" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtLiveProcs" Text="Procesos en vivo: --" FontSize="11" Foreground="{DynamicResource QuietBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
+                                               ToolTip="Incluye los procesos de Windows y de las aplicaciones. El recuento cambia con la actividad del equipo."/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,15" Margin="7,0,7,0">
+                                <StackPanel>
+                                    <TextBlock Text="MEDICIÓN DE REFERENCIA" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,6"/>
+                                    <TextBlock x:Name="TxtBeforeMain" Text="Sin capturar" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtBeforeSub" Text="Se mide al abrir y antes de cambiar de perfil" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    <Button Content="Guardar foto" Style="{StaticResource LinkBtn}" Click="BtnCaptureBefore_Click"
+                                            HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="14" Padding="18,15" Margin="7,0,0,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="TxtAfterTitle" Text="ESTADO AL ABRIR" FontFamily="{DynamicResource MonoFont}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,6"/>
+                                    <TextBlock x:Name="TxtAfterMain" Text="Leyendo el plan activo…" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtAfterSub" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    <WrapPanel Margin="0,10,0,0">
+                                        <Button x:Name="BtnLatestProfileReport" Content="Ver ajustes del último perfil"
+                                                Style="{StaticResource LinkBtn}" Margin="0,0,8,4"
+                                                IsEnabled="False" Click="BtnShowProfileReport_Click"/>
+                                        <Button Content="Estado de los ajustes" Style="{StaticResource LinkBtn}" Margin="0,0,0,4"
+                                                Click="BtnShowSettingStatus_Click"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
                         <!-- Automatización de Perfiles -->
                         <Border Style="{StaticResource SectionCard}">
                             <StackPanel>
@@ -330,21 +327,10 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Herramientas Rápidas -->
+                        <!-- Copia de Seguridad -->
                         <Border Style="{StaticResource SectionCard}">
                             <StackPanel>
-                                <TextBlock Text="MANTENIMIENTO Y SEGURIDAD" Style="{StaticResource SectionKicker}"/>
-                                <TextBlock Text="Limpieza puntual de temporales, caché DNS y copia de seguridad." Style="{StaticResource SectionSubtitle}"/>
-
-                                <Border x:Name="RowMaintenance" Style="{StaticResource SettingRow}">
-                                    <DockPanel>
-                                        <Button DockPanel.Dock="Right" Content="Limpiar y Liberar RAM" Style="{StaticResource SecondaryBtn}" Click="BtnMaintenance_Click" VerticalAlignment="Center" Margin="14,0,0,0"/>
-                                        <StackPanel>
-                                            <TextBlock Text="Limpieza Completa (Basura, Caché Gráfica y Memoria RAM)" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-                                            <TextBlock Text="Borra temporales, ajusta la RAM residente sin cerrar programas y optimiza el disco SSD." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </DockPanel>
-                                </Border>
+                                <TextBlock Text="COPIA DE SEGURIDAD" Style="{StaticResource SectionKicker}" Margin="0,0,0,10"/>
 
                                 <Border x:Name="RowBackup" Style="{StaticResource SettingRow}" Margin="0">
                                     <DockPanel>
@@ -1062,7 +1048,7 @@
             </TabItem>
         </TabControl>
 
-        <GridSplitter x:Name="ActivityLogSplitter" Grid.Row="3" Grid.Column="1" Visibility="Collapsed"
+        <GridSplitter x:Name="ActivityLogSplitter" Grid.Row="2" Grid.Column="1" Visibility="Collapsed"
                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent"
                       ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ShowsPreview="True"
                       ToolTip="Arrastra para cambiar el ancho del registro" AutomationProperties.Name="Cambiar el ancho del registro"
@@ -1076,7 +1062,7 @@
                 </ControlTemplate>
             </GridSplitter.Template>
         </GridSplitter>
-        <Border x:Name="ActivityLogPanel" Grid.Row="3" Grid.Column="2" Panel.ZIndex="2" Visibility="Collapsed"
+        <Border x:Name="ActivityLogPanel" Grid.Row="2" Grid.Column="2" Panel.ZIndex="2" Visibility="Collapsed"
                 Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"
                 CornerRadius="12" Padding="12,10" PreviewKeyDown="ActivityLogPanel_PreviewKeyDown">
             <DockPanel>

@@ -214,29 +214,7 @@ namespace WinPulseOptimizer
             _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
         }
 
-        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateDashboardLayout();
-
-        private bool? _userShowsMetrics;
-
-        private void BtnToggleDashboard_Click(object sender, RoutedEventArgs e)
-        {
-            bool currentlyVisible = DashboardMetrics.Visibility == Visibility.Visible;
-            _userShowsMetrics = !currentlyVisible;
-            UpdateDashboardLayout();
-            if (_userShowsMetrics == true)
-                AnimateSlideFadeIn(DashboardMetrics, 0, -8, 180);
-        }
-
-        private void UpdateDashboardLayout()
-        {
-            if (DashboardMetrics == null) return;
-            bool compact = ActualHeight < 760;
-            bool showMetrics = _userShowsMetrics ?? !compact;
-            DashboardMetrics.Visibility = showMetrics ? Visibility.Visible : Visibility.Collapsed;
-            BtnToggleDashboard.Visibility = Visibility.Visible;
-            BtnToggleDashboard.Content = showMetrics ? "Ocultar resumen" : "Ver resumen";
-            UpdateLiveMetricsSchedule();
-        }
+        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateLiveMetricsSchedule();
 
         private static void AnimateSlideFadeIn(FrameworkElement element, double offsetX = 0, double offsetY = 12, int durationMs = 220)
         {

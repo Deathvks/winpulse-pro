@@ -25,6 +25,7 @@ namespace WinPulseOptimizer
             if (!ReferenceEquals(e.Source, MainTabs)) return;
             if (!_loading && MainTabs.SelectedItem is TabItem tab && tab.Content is FrameworkElement view)
                 AnimateSlideFadeIn(view, 0, 12, 220);
+            _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(UpdateLiveMetricsSchedule));
             if (!_loading && ReferenceEquals(MainTabs.SelectedItem, TabNetwork))
                 await RefreshEthernetAdaptersAsync();
         }
