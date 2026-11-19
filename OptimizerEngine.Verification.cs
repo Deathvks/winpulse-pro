@@ -143,6 +143,16 @@ public static partial class OptimizerEngine
 
     private static void VerifyPowerModes(ChangeStore store, UsageProfile profile, List<string> differences)
     {
+        // Windows Power Mode overlays only govern the Balanced scheme; non-Balanced/OEM schemes ignore them.
+        try
+        {
+            if (ActivePlan() != Guid.Parse(GuidBalanced)) return;
+        }
+        catch (Exception ex) when (ex is IOException or WindowsPowerException)
+        {
+            return;
+        }
+
         Guid expectedMode = profile switch
         {
             UsageProfile.GamingMax => new("ded574b5-45a0-4f42-8737-46345c09c238"),

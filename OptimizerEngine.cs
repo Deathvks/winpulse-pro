@@ -336,14 +336,18 @@ namespace WinPulseOptimizer
 
         internal static void ApplyProfilePowerMode(UsageProfile profile, Guid? plan)
         {
-            Guid mode = profile switch
+            // Windows Power Mode overlays only apply when the active power scheme is Balanced.
+            if ((plan ?? ActivePlan()) == Guid.Parse(GuidBalanced))
             {
-                UsageProfile.GamingMax => new("ded574b5-45a0-4f42-8737-46345c09c238"),
-                UsageProfile.ChillBattery => new("961cc777-2547-4f9d-8174-7d86181b8a7a"),
-                _ => Guid.Empty
-            };
-            WritePowerMode(false, mode, optional: true);
-            WritePowerMode(true, mode, optional: true);
+                Guid mode = profile switch
+                {
+                    UsageProfile.GamingMax => new("ded574b5-45a0-4f42-8737-46345c09c238"),
+                    UsageProfile.ChillBattery => new("961cc777-2547-4f9d-8174-7d86181b8a7a"),
+                    _ => Guid.Empty
+                };
+                WritePowerMode(false, mode, optional: true);
+                WritePowerMode(true, mode, optional: true);
+            }
 
             if (plan.HasValue && (ActivePlan() != plan.Value || (_strictPlanLimitsCheck && !HasProfileProcessorLimits(profile, plan.Value))))
                 throw new IOException("Windows no mantuvo el plan o los límites de CPU solicitados después de activarlo.");
