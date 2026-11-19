@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Win32;
@@ -810,23 +812,60 @@ namespace WinPulseOptimizer
         {
             string path = InterfacesPath;
             using var interfaces = Registry.LocalMachine.OpenSubKey(path);
+            bool hasFilter = TryGetEligibleNagleInterfaceIds(out var eligibleIds);
             int matched = 0;
             foreach (string sub in interfaces?.GetSubKeyNames() ?? Array.Empty<string>())
             {
                 using var nic = interfaces!.OpenSubKey(sub);
-                if (nic == null || !HasConfiguredIp(nic)) continue;
-                matched++;
+                if (nic == null) continue;
+                bool isPhysical = !hasFilter || eligibleIds.Contains(sub);
+                bool hasConfigured = isPhysical && HasConfiguredIp(nic);
+                bool hasExistingKeys = !disable && (nic.GetValue("TcpAckFrequency") != null || nic.GetValue("TCPNoDelay") != null);
+                if (!hasConfigured && !hasExistingKeys) continue;
+                if (hasConfigured) matched++;
                 WriteRegistry(Registry.LocalMachine, P(path, sub), "TcpAckFrequency", disable ? 1 : null, RegistryValueKind.DWord);
                 WriteRegistry(Registry.LocalMachine, P(path, sub), "TCPNoDelay", disable ? 1 : null, RegistryValueKind.DWord);
             }
 
             if (disable && matched == 0)
             {
-                const string message = "No hay adaptadores con una dirección IP configurada para aplicar el ajuste TCP.";
+                const string message = "No hay adaptadores Ethernet o Wi-Fi con una dirección IP configurada para aplicar el ajuste TCP.";
                 if (!optional) throw new IOException(message);
                 _operationNotices?.Add(message);
                 TrackProfileSetting("network", "", "Ajuste de latencia TCP", null,
-                    "TcpAckFrequency = 1 · TCPNoDelay = 1", null, "Sin adaptadores con IP configurada");
+                    "TcpAckFrequency = 1 · TCPNoDelay = 1", null, "Sin adaptadores Ethernet o Wi-Fi con IP");
+            }
+        }
+
+        private static bool TryGetEligibleNagleInterfaceIds(out HashSet<string> ids)
+        {
+            ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.NetworkInterfaceType is not (NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211
+                        or NetworkInterfaceType.GigabitEthernet or NetworkInterfaceType.FastEthernetT
+                        or NetworkInterfaceType.FastEthernetFx))
+                        continue;
+
+                    string desc = ni.Description ?? "";
+                    string name = ni.Name ?? "";
+                    if (desc.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase) ||
+                        name.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase) ||
+                        desc.Contains("Kernel Debug", StringComparison.OrdinalIgnoreCase) ||
+                        name.Contains("depurador", StringComparison.OrdinalIgnoreCase) ||
+                        desc.Contains("Virtual", StringComparison.OrdinalIgnoreCase) ||
+                        desc.Contains("VPN", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    ids.Add(ni.Id);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -993,9 +1032,11 @@ namespace WinPulseOptimizer
             {
                 using var interfaces = Registry.LocalMachine.OpenSubKey(InterfacesPath);
                 if (interfaces == null) return false;
+                bool hasFilter = TryGetEligibleNagleInterfaceIds(out var eligibleIds);
                 bool applicable = false;
                 foreach (string sub in interfaces.GetSubKeyNames())
                 {
+                    if (hasFilter && !eligibleIds.Contains(sub)) continue;
                     using var nic = interfaces.OpenSubKey(sub);
                     if (nic == null || !HasConfiguredIp(nic)) continue;
                     applicable = true;

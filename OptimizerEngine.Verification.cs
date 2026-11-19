@@ -292,9 +292,11 @@ public static partial class OptimizerEngine
         {
             using var interfaces = Registry.LocalMachine.OpenSubKey(InterfacesPath);
             if (interfaces == null) return requireAdapter;
+            bool hasFilter = TryGetEligibleNagleInterfaceIds(out var eligibleIds);
             int matched = 0;
             foreach (string sub in interfaces.GetSubKeyNames())
             {
+                if (hasFilter && !eligibleIds.Contains(sub)) continue;
                 using var nic = interfaces.OpenSubKey(sub);
                 if (nic == null || !HasConfiguredIp(nic)) continue;
                 matched++;
