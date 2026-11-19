@@ -63,6 +63,7 @@ namespace WinPulseOptimizer
         public DateTimeOffset LastUpdateCheckUtc { get; set; }
         public List<string> IncludedGameExecutables { get; set; } = new();
         public List<string> ExcludedGameExecutables { get; set; } = new();
+        public List<string> ExcludedBackgroundExecutables { get; set; } = new();
         public List<GameProfile> GameProfiles { get; set; } = new();
         public BenchmarkResults Benchmarks { get; set; } = new();
         public bool PauseAutomationForBenchmarks { get; set; }

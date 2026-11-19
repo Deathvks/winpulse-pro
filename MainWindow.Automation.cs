@@ -20,6 +20,7 @@ namespace WinPulseOptimizer
         private string? _lastDgpuAppliedKey;
         private string[] _includedGames = Array.Empty<string>();
         private string[] _excludedGames = Array.Empty<string>();
+        private string[] _excludedBackgroundApps = Array.Empty<string>();
 
         private void LoadAutomationRules(AuditStore store)
         {
@@ -31,10 +32,28 @@ namespace WinPulseOptimizer
                 store.SmartGameScheduling ? "AccentBrush" : "QuietBrush");
             _includedGames = (store.IncludedGameExecutables ?? new()).Select(HardwareMonitor.NormalizeExecutableName).ToArray();
             _excludedGames = (store.ExcludedGameExecutables ?? new()).Select(HardwareMonitor.NormalizeExecutableName).ToArray();
+            _excludedBackgroundApps = (store.ExcludedBackgroundExecutables ?? new()).Select(HardwareMonitor.NormalizeExecutableName).ToArray();
             TxtIncludedGames.Text = string.Join(Environment.NewLine, _includedGames.Select(game => game + ".exe"));
             TxtExcludedGames.Text = string.Join(Environment.NewLine, _excludedGames.Select(game => game + ".exe"));
+            TxtExcludedBackgroundApps.Text = string.Join(Environment.NewLine, _excludedBackgroundApps.Select(app => app + ".exe"));
             LoadGameProfiles(store.GameProfiles);
             RefreshDgpuGamesList();
+        }
+
+        private void BtnSaveBackgroundExclusions_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var store = HistoryManager.Load();
+                store.ExcludedBackgroundExecutables = ReadRules(TxtExcludedBackgroundApps.Text).ToList();
+                if (!HistoryManager.Save(store)) throw new IOException("No se pudieron guardar las exclusiones.");
+                _excludedBackgroundApps = store.ExcludedBackgroundExecutables.Select(HardwareMonitor.NormalizeExecutableName).ToArray();
+                TxtExcludedBackgroundApps.Text = string.Join(Environment.NewLine, _excludedBackgroundApps.Select(app => app + ".exe"));
+                if (ProcessResourceMonitor.HasActiveSmartGameScheduling)
+                    ProcessResourceMonitor.RestoreSmartGameScheduling();
+                TxtExcludedBackgroundStatus.Text = "Exclusiones guardadas.";
+            }
+            catch (Exception ex) { TxtExcludedBackgroundStatus.Text = ex.Message; }
         }
 
         private void SmartGamePriority_Changed(object sender, RoutedEventArgs e)
@@ -200,7 +219,8 @@ namespace WinPulseOptimizer
 
                 if (smartScheduling && running != null)
                 {
-                    var gameExcluded = included.Concat(profiles.SelectMany(profile => profile.Executables))
+                    var gameExcluded = included.Concat(_excludedBackgroundApps)
+                        .Concat(profiles.SelectMany(profile => profile.Executables))
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
                     var schedStatus = await Task.Run(() => ProcessResourceMonitor.ApplySmartGameScheduling(running, gameExcluded));
                     if (SwSmartGamePriority.IsChecked == true)

@@ -78,7 +78,8 @@ public partial class MainWindow
         int settingsVersion = _adaptiveMemorySettingsVersion;
         try
         {
-            var excluded = _includedGames.Concat(_gameProfiles.SelectMany(profile => profile.Executables))
+            var excluded = _includedGames.Concat(_excludedBackgroundApps)
+                .Concat(_gameProfiles.SelectMany(profile => profile.Executables))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (_detectedGame is { } game) excluded.Add(game);
             var candidate = await Task.Run(() => ProcessResourceMonitor.FindQuietBackgroundAppAsync(excluded));
