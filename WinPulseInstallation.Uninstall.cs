@@ -114,13 +114,24 @@ namespace WinPulseOptimizer
                 FileVersionInfo.GetVersionInfo(InstalledExecutable).ProductName != "WinPulseOptimizer")
                 throw new IOException("El ejecutable de la ruta de instalación no corresponde a WinPulse.");
             var timer = Stopwatch.StartNew();
+            bool terminatedOtherSessions = false;
             while (true)
             {
                 try { File.Delete(InstalledExecutable); return; }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
+                    if (!terminatedOtherSessions && timer.Elapsed >= TimeSpan.FromSeconds(2))
+                    {
+                        terminatedOtherSessions = true;
+                        TerminateRemainingInstalledProcesses();
+                    }
                     if (timer.Elapsed >= TimeSpan.FromSeconds(6))
-                        throw new IOException("Cierra WinPulse con «Salir por completo» en el icono junto al volumen y vuelve a desinstalar.", ex);
+                    {
+                        string message = HasLiveInstalledProcess()
+                            ? "Cierra WinPulse con «Salir por completo» en el icono junto al reloj y vuelve a desinstalar."
+                            : "Windows mantiene bloqueado el ejecutable tras una suspensión o cierre previo (sin proceso activo). Usa «Inicio → Reiniciar» en Windows y vuelve a desinstalar.";
+                        throw new IOException(message, ex);
+                    }
                     Thread.Sleep(150);
                 }
             }

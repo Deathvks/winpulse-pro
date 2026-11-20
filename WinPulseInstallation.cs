@@ -101,18 +101,70 @@ namespace WinPulseOptimizer
                 }
 
                 var timer = Stopwatch.StartNew();
+                bool terminatedOtherSessions = false;
                 while (true)
                 {
                     try { File.Move(temporary, target, overwrite: true); return; }
                     catch (Exception ex) when ((ex.HResult & 0xffff) is 5 or 32 or 33)
                     {
+                        if (!terminatedOtherSessions && timer.Elapsed >= TimeSpan.FromSeconds(2))
+                        {
+                            terminatedOtherSessions = true;
+                            TerminateRemainingInstalledProcesses();
+                        }
                         if (timer.Elapsed >= TimeSpan.FromSeconds(8))
-                            throw new IOException("La copia instalada sigue en uso. Cierra WinPulse por completo y abre de nuevo la actualización.", ex);
+                        {
+                            string message = HasLiveInstalledProcess()
+                                ? "La copia instalada sigue en uso. Cierra WinPulse por completo y abre de nuevo la actualización."
+                                : "Windows mantiene bloqueado el ejecutable anterior tras una suspensión o cierre previo (sin proceso activo). Usa «Inicio → Reiniciar» en Windows y vuelve a ejecutar la actualización.";
+                            throw new IOException(message, ex);
+                        }
                         Thread.Sleep(150);
                     }
                 }
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
+
+        internal static void TerminateRemainingInstalledProcesses()
+        {
+            foreach (var process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(ExecutableName)))
+            {
+                using (process)
+                {
+                    if (process.Id == Environment.ProcessId) continue;
+                    try
+                    {
+                        if (process.HasExited || process.Threads.Count == 0) continue;
+                        string? path = process.MainModule?.FileName;
+                        if (path != null && !IsInstalledExecutable(path)) continue;
+                        process.Kill();
+                        process.WaitForExit(3000);
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        internal static bool HasLiveInstalledProcess()
+        {
+            foreach (var process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(ExecutableName)))
+            {
+                using (process)
+                {
+                    if (process.Id == Environment.ProcessId) continue;
+                    try
+                    {
+                        if (!process.HasExited && process.Threads.Count > 0)
+                        {
+                            string? path = process.MainModule?.FileName;
+                            if (path == null || IsInstalledExecutable(path)) return true;
+                        }
+                    }
+                    catch { }
+                }
+            }
+            return false;
         }
 
         private static void CreateStartMenuShortcut(string target)
