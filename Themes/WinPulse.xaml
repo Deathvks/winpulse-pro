@@ -264,7 +264,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type CheckBox}">
-                    <Grid Width="42" Height="24">
+                    <Grid x:Name="SwitchRoot" Width="42" Height="24">
                         <Border x:Name="Track" CornerRadius="12"
                                 Background="{DynamicResource StageBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"/>
                         <Border x:Name="TrackActive" CornerRadius="12"
@@ -308,8 +308,7 @@
                             <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Track" Property="Opacity" Value="0.52"/>
-                            <Setter TargetName="TrackActive" Property="Opacity" Value="0.52"/>
+                            <Setter TargetName="SwitchRoot" Property="Opacity" Value="0.52"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
