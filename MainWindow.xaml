@@ -49,6 +49,19 @@
                     </StackPanel>
                 </DockPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border x:Name="BusyStatusPill" Visibility="Collapsed" Background="{DynamicResource AccentSoftBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8"
+                            Padding="10,4" Margin="0,0,10,0" VerticalAlignment="Center" MaxWidth="270">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtBusyStatus" Text="Aplicando…" FontSize="11.5" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <ProgressBar IsIndeterminate="True" Height="2.5" Margin="0,4,0,0"
+                                         Foreground="{DynamicResource AccentBrush}" Background="#242730" BorderThickness="0"/>
+                        </StackPanel>
+                    </Border>
                     <Border x:Name="BadgePower" Background="Transparent" Padding="6,4" VerticalAlignment="Center" Margin="0,0,10,0">
                         <TextBlock x:Name="TxtPowerState" Text="Conectado a la corriente" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
                     </Border>
@@ -147,7 +160,7 @@
                                                 ToolTip="Libera memoria residente de procesos en segundo plano al instante sin cerrar aplicaciones."/>
                                         <Button x:Name="BtnQuickCleanAndRam" Content="Limpiar y liberar RAM" Style="{StaticResource PrimaryBtn}"
                                                 Padding="15,7" Margin="0,2,0,2" Click="BtnMaintenance_Click"
-                                                ToolTip="Borra temporales, libera memoria RAM, vacía caché DNS y optimiza el disco SSD."/>
+                                                ToolTip="Borra temporales (%TEMP%, Windows\Temp y caché de shaders), vacía la caché DNS y libera memoria RAM."/>
                                     </WrapPanel>
                                     <StackPanel VerticalAlignment="Center">
                                         <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">

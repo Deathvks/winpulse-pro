@@ -1218,7 +1218,7 @@ namespace WinPulseOptimizer
 
             bool isOn = cb.IsChecked == true;
             bool alreadyApplied;
-            SetSystemChangeBusy(true);
+            SetSystemChangeBusy(true, "Comprobando ajuste en Windows…");
             try
             {
                 alreadyApplied = await Task.Run(() => OptimizerEngine.IsTweakInState(cb.Name, isOn));
@@ -1283,7 +1283,7 @@ namespace WinPulseOptimizer
             if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return false;
 
             ProfileVerificationResult? verification = null;
-            SetSystemChangeBusy(true);
+            SetSystemChangeBusy(true, "Comprobando perfil activo…");
             try
             {
                 verification = await Task.Run(() => OptimizerEngine.VerifyProfileState(profile, values));
@@ -1355,7 +1355,7 @@ namespace WinPulseOptimizer
         private async void BtnPurgeRam_Click(object sender, RoutedEventArgs e)
         {
             if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
-            SetSystemChangeBusy(true);
+            SetSystemChangeBusy(true, "Liberando memoria RAM…");
             ShowChangeCard("AJUSTE DE RAM EN CURSO", "Ajustando la memoria de los procesos…", "");
             try
             {
@@ -1432,10 +1432,10 @@ namespace WinPulseOptimizer
         private async void BtnMaintenance_Click(object sender, RoutedEventArgs e)
         {
             if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
-            SetSystemChangeBusy(true);
+            SetSystemChangeBusy(true, "Limpiando temporales y cachés…");
             ShowChangeCard("MANTENIMIENTO EN CURSO", "Limpiando archivos temporales y cachés…",
-                "Se medirá la RAM justo antes y después de ajustar la memoria.");
-            TxtQuickCleanupHint.Text = "Limpiando temporales y liberando memoria RAM…";
+                "Eliminando temporales de usuario y cachés de shaders.");
+            TxtQuickCleanupHint.Text = "Limpiando archivos temporales y cachés…";
             TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
             Log("Iniciando limpieza de archivos temporales y cachés.");
             string? measurement = null;
@@ -1443,28 +1443,43 @@ namespace WinPulseOptimizer
             try
             {
                 int filesDeleted = await OptimizerEngine.CleanTemporaryFilesAsync();
-                var trim = await Task.Run(OptimizerEngine.MeasureMemoryTrim);
-                string cleanup = $"Archivos eliminados: {filesDeleted}. {DescribeMemoryTrimProcesses(trim)}";
-                measurement = DescribeMemoryTrim(trim);
-                measurementDetail = cleanup;
-                ShowChangeCard("RAM TRAS LA LIMPIEZA", measurement, $"{cleanup} Optimización del disco en curso…");
-                TxtQuickCleanupHint.Text = $"Última limpieza: {measurement.Replace(Environment.NewLine, " · ")} · {filesDeleted} archivos eliminados.";
-                TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
-                Log($"{cleanup} Iniciando la optimización del disco.");
+                int systemFilesDeleted = 0;
+                bool elevatedCompleted = false;
 
-                var diskResult = await RunSystemRequestAsync(new(SystemAction.DiskMaintenance),
-                    "Limpiar Windows\\Temp, vaciar la caché DNS y optimizar el disco del sistema.");
-                int systemFilesDeleted = int.TryParse(diskResult.Notice, System.Globalization.NumberStyles.Integer,
-                    System.Globalization.CultureInfo.InvariantCulture, out int sysDeleted) ? sysDeleted : 0;
+                TxtBusyStatus.Text = "Limpiando Windows\\Temp y DNS…";
+                ShowChangeCard("MANTENIMIENTO EN CURSO", "Limpiando Windows\\Temp y caché DNS…",
+                    $"Temporales de usuario eliminados: {filesDeleted}. Autoriza administrador si deseas limpiar también Windows\\Temp y DNS.");
+                try
+                {
+                    var diskResult = await RunSystemRequestAsync(new(SystemAction.DiskMaintenance),
+                        "Limpiar Windows\\Temp y vaciar la caché DNS.");
+                    systemFilesDeleted = int.TryParse(diskResult.Notice, System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out int sysDeleted) ? sysDeleted : 0;
+                    elevatedCompleted = true;
+                }
+                catch (OperationCanceledException)
+                {
+                    Log("Se omitió la limpieza elevada (Windows\\Temp y DNS) al cancelar el permiso de administrador.");
+                }
+
+                TxtBusyStatus.Text = "Liberando memoria RAM…";
+                ShowChangeCard("MANTENIMIENTO EN CURSO", "Liberando memoria RAM…",
+                    "Se mide la RAM justo antes y después de ajustar los procesos.");
+                var trim = await Task.Run(OptimizerEngine.MeasureMemoryTrim);
                 int totalDeleted = filesDeleted + systemFilesDeleted;
-                string fullCleanup = $"Archivos eliminados: {totalDeleted} (usuario/caché GPU: {filesDeleted}, Windows\\Temp: {systemFilesDeleted}). {DescribeMemoryTrimProcesses(trim)}";
+                measurement = DescribeMemoryTrim(trim);
+                string elevatedSummary = elevatedCompleted
+                    ? $"Archivos eliminados: {totalDeleted} (usuario/caché GPU: {filesDeleted}, Windows\\Temp: {systemFilesDeleted}). Windows confirmó el vaciado de DNS."
+                    : $"Archivos de usuario eliminados: {filesDeleted} (se omitió Windows\\Temp y DNS).";
+                string fullCleanup = $"{elevatedSummary} {DescribeMemoryTrimProcesses(trim)}";
+                measurementDetail = fullCleanup;
+                ShowChangeCard("RAM TRAS LA LIMPIEZA", measurement, fullCleanup);
                 RefreshTopProcesses();
-                TxtAfterSub.Text = fullCleanup;
-                TxtQuickCleanupHint.Text = $"Última limpieza: {measurement.Replace(Environment.NewLine, " · ")} · {totalDeleted} archivos eliminados.";
-                string result = $"{fullCleanup} Windows confirmó el vaciado de DNS y la operación ReTrim.";
-                RecordAction("Mantenimiento", result, "Pestaña 0: Opciones de Energía y Equivalencias", 0,
+                TxtQuickCleanupHint.Text = $"Último ajuste: {measurement.Replace(Environment.NewLine, " · ")} · {totalDeleted} archivos eliminados.";
+                TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+                RecordAction("Mantenimiento", fullCleanup, "Pestaña 0: Opciones de Energía y Equivalencias", 0,
                     "RowMaintenance", measurement);
-                Log($"Mantenimiento completado. {result} {measurement}");
+                Log($"Mantenimiento completado. {fullCleanup} {measurement}");
             }
             catch (Exception ex)
             {
@@ -1472,7 +1487,7 @@ namespace WinPulseOptimizer
                     TxtAfterSub.Text = $"{measurementDetail} • Mantenimiento incompleto. Consulta Historial.";
                 else
                     ShowChangeCard("MANTENIMIENTO", "Mantenimiento incompleto", "Consulta el detalle en Historial.");
-                RecordAction("Mantenimiento incompleto", ex.Message,
+                RecordAction("MANTENIMIENTO INCOMPLETO", ex.Message,
                     "Pestaña 0: Opciones de Energía y Equivalencias", 0, "RowMaintenance",
                     measurement ?? "Falló una parte del mantenimiento.");
                 Log($"Mantenimiento incompleto: {ex.Message}");
@@ -1483,7 +1498,7 @@ namespace WinPulseOptimizer
         private async void BtnBackup_Click(object sender, RoutedEventArgs e)
         {
             if (_systemChangeInProgress) return;
-            SetSystemChangeBusy(true);
+            SetSystemChangeBusy(true, "Creando punto de restauración…");
             Log("Creando y comprobando el punto de restauración.");
             try
             {
@@ -1520,7 +1535,7 @@ namespace WinPulseOptimizer
             bool trimMemory = false, bool automatic = false)
         {
             if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return false;
-            SetSystemChangeBusy(true);
+            SetSystemChangeBusy(true, $"Aplicando: {title}…");
             string previousProfile = _activeProfileTag;
             bool resultRecorded = false;
             Log("Aplicando y verificando el cambio.");
@@ -1652,12 +1667,18 @@ namespace WinPulseOptimizer
                 : $"{prefix}Pendientes hasta el próximo reinicio de Windows: {string.Join(", ", pending)}.";
         }
 
-        private void SetSystemChangeBusy(bool busy)
+        private void SetSystemChangeBusy(bool busy, string? statusText = null)
         {
             if (busy)
             {
                 _systemChangeSequence++;
                 _loadedPingCancellation?.Cancel();
+                TxtBusyStatus.Text = statusText ?? "Aplicando cambios…";
+                BusyStatusPill.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                BusyStatusPill.Visibility = Visibility.Collapsed;
             }
             _systemChangeInProgress = busy;
             CardProfiles.IsEnabled = !busy;
@@ -1727,7 +1748,7 @@ namespace WinPulseOptimizer
         private async Task RestoreSystemChangeAsync(bool original)
         {
             if (_systemChangeInProgress) return;
-            SetSystemChangeBusy(true);
+            SetSystemChangeBusy(true, "Restaurando configuración…");
             try
             {
                 var restored = await RunSystemRequestAsync(new(SystemAction.Restore, Enabled: original), "Recuperar los valores de Windows guardados por WinPulse.");

@@ -1027,9 +1027,8 @@ namespace WinPulseOptimizer
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp")
             });
+            // Windows 10/11 ya ejecuta TRIM automático y en tiempo real; omitir Optimize-Volume -ReTrim aquí evita bloquear el SSD.
             RunCommand("ipconfig.exe", "/flushdns");
-            string systemDrive = Path.GetPathRoot(Environment.SystemDirectory)!;
-            RunPowerShell($"Optimize-Volume -DriveLetter '{systemDrive[0]}' -ReTrim", timeoutMs: 120_000);
             return windowsTempDeleted;
         });
 
