@@ -33,7 +33,7 @@
                     <TextBlock Text="Un nombre de archivo por línea, por ejemplo cs2.exe."
                                Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                 </DockPanel>
-                <Border Background="#131418" BorderBrush="#26282E" BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,0,0,12">
+                <Border Background="{DynamicResource RowBrush}" BorderBrush="{DynamicResource RowStrokeBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,0,0,12">
                     <DockPanel>
                         <CheckBox x:Name="ChkPreferDedicatedGpu" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}" Margin="12,0,0,0"/>
                         <StackPanel>

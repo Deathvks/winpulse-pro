@@ -25,6 +25,7 @@ public partial class App : Application
                 catch (Exception ex) { Console.Error.WriteLine(ex.Message); Shutdown(1); }
                 return;
             }
+            InitializeTheme();
 #if WINPULSE_INSTALLER
             string source = Environment.ProcessPath ?? throw new IOException("No se encontró el ejecutable de WinPulse.");
             var version = typeof(App).Assembly.GetName().Version!;
@@ -231,8 +232,23 @@ public partial class App : Application
         else MessageBox.Show(message, "WinPulse Pro", MessageBoxButton.OK, icon);
     }
 
+    private static void InitializeTheme()
+    {
+        try
+        {
+            string savedTheme = HistoryManager.Load().ThemeMode;
+            ThemeManager.ApplyTheme(ThemeManager.ParseMode(savedTheme));
+            ThemeManager.StartSystemSync();
+        }
+        catch
+        {
+            ThemeManager.ApplyTheme(AppThemeMode.System);
+        }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        ThemeManager.StopSystemSync();
         _instance?.Dispose();
         base.OnExit(e);
     }

@@ -20,11 +20,13 @@ internal sealed class TrayMenu : ContextMenuStrip
         return Color.FromArgb(color.A, color.R, color.G, color.B);
     }
 
-    private readonly Color _surface = ThemeColor("PanelBrush");
-    private readonly Color _text = ThemeColor("TextBrush");
-    private readonly Color _muted = ThemeColor("MutedBrush");
-    private readonly Color _danger = ThemeColor("DangerBrush");
+    private Color _surface;
+    private Color _text;
+    private Color _muted;
+    private Color _danger;
     private readonly List<IDisposable> _assets = new();
+    private readonly List<IDisposable> _iconAssets = new();
+    private readonly List<(ToolStripMenuItem Item, string Glyph, string ColorKey)> _commandIcons = new();
     private readonly ToolStripLabel _brand;
     private readonly ToolStripLabel _status;
     private readonly ToolStripMenuItem _gaming;
@@ -32,7 +34,7 @@ internal sealed class TrayMenu : ContextMenuStrip
     private readonly ToolStripMenuItem _chill;
     private readonly ToolStripMenuItem _memory;
     private readonly ToolStripMenuItem _exit;
-    private readonly ToolStripRenderer _dark = new DarkRenderer();
+    private ToolStripRenderer _themedRenderer = null!;
     private readonly ToolStripRenderer _highContrast = new ToolStripSystemRenderer();
 
     internal TrayMenu(Icon icon, Action open, Action gaming, Action study, Action chill, Action memory, Action exit)
@@ -69,13 +71,34 @@ internal sealed class TrayMenu : ContextMenuStrip
 
         Items.AddRange([_brand, _status, Separator(), openItem, Separator(),
             _gaming, _study, _chill, Separator(), _memory, _exit]);
+        ApplyThemeColors();
+        ThemeManager.ThemeApplied += OnThemeApplied;
         UpdateState("Plan de Windows", "", busy: false, canExit: true);
+    }
+
+    private void OnThemeApplied() => ApplyThemeColors();
+
+    private void ApplyThemeColors()
+    {
+        _surface = ThemeColor("PanelBrush");
+        _text = ThemeColor("TextBrush");
+        _muted = ThemeColor("MutedBrush");
+        _danger = ThemeColor("DangerBrush");
+        _themedRenderer = new DarkRenderer();
+        foreach (var asset in _iconAssets) asset.Dispose();
+        _iconAssets.Clear();
+        foreach (var (item, glyph, colorKey) in _commandIcons)
+        {
+            var bmp = DrawIcon(glyph, colorKey);
+            _iconAssets.Add(bmp);
+            item.Image = bmp;
+        }
     }
 
     internal void UpdateState(string title, string tag, bool busy, bool canExit, bool pendingReapply = false)
     {
         bool highContrast = SystemInformation.HighContrast;
-        Renderer = highContrast ? _highContrast : _dark;
+        Renderer = highContrast ? _highContrast : _themedRenderer;
         ShowCheckMargin = highContrast;
         ShowImageMargin = !highContrast;
         BackColor = highContrast ? SystemColors.Menu : _surface;
@@ -99,12 +122,13 @@ internal sealed class TrayMenu : ContextMenuStrip
 
     private ToolStripMenuItem Command(string text, string glyph, Action click, string color = "AccentBrush")
     {
-        var item = new ToolStripMenuItem(text, Own(DrawIcon(glyph, color)), (_, _) => click())
+        var item = new ToolStripMenuItem(text, null, (_, _) => click())
         {
             Padding = new Padding(10, 8, 34, 8),
             Margin = new Padding(4, 2, 4, 2),
             ImageTransparentColor = Color.Transparent
         };
+        _commandIcons.Add((item, glyph, color));
         return item;
     }
 
@@ -141,6 +165,9 @@ internal sealed class TrayMenu : ContextMenuStrip
     {
         base.Dispose(disposing);
         if (!disposing) return;
+        ThemeManager.ThemeApplied -= OnThemeApplied;
+        foreach (var asset in _iconAssets) asset.Dispose();
+        _iconAssets.Clear();
         foreach (var asset in _assets) asset.Dispose();
         _assets.Clear();
     }

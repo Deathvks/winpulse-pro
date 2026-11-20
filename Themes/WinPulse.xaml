@@ -7,6 +7,10 @@
     <SolidColorBrush x:Key="StageBrush" Color="#080909"/>
     <SolidColorBrush x:Key="PanelBrush" Color="#17181C"/>
     <SolidColorBrush x:Key="RaisedBrush" Color="#1D1F24"/>
+    <SolidColorBrush x:Key="RowBrush" Color="#131418"/>
+    <SolidColorBrush x:Key="RowStrokeBrush" Color="#26282E"/>
+    <SolidColorBrush x:Key="BadgeBrush" Color="#15171C"/>
+    <SolidColorBrush x:Key="ProgressTrackBrush" Color="#242730"/>
     <SolidColorBrush x:Key="StrokeBrush" Color="#35373C"/>
     <SolidColorBrush x:Key="DividerBrush" Color="#303236"/>
     <SolidColorBrush x:Key="HoverBrush" Color="#262930"/>
@@ -228,8 +232,8 @@
         <Setter Property="Margin" Value="0,0,0,18"/>
     </Style>
     <Style x:Key="SettingRow" TargetType="{x:Type Border}">
-        <Setter Property="Background" Value="#131418"/>
-        <Setter Property="BorderBrush" Value="#26282E"/>
+        <Setter Property="Background" Value="{DynamicResource RowBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RowStrokeBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="Padding" Value="16,13"/>

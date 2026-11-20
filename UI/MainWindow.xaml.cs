@@ -19,9 +19,6 @@ namespace WinPulseOptimizer
 {
     public partial class MainWindow : Window
     {
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern uint RegisterWindowMessage(string lpString);
 
@@ -82,7 +79,7 @@ namespace WinPulseOptimizer
             InitializeUpdateButton(version);
             SourceInitialized += (_, _) =>
             {
-                ApplyDarkTitleBar();
+                ThemeManager.ApplyTitleBar(this);
                 RegisterTaskbarHook();
             };
             SetupSystemTray();
@@ -127,6 +124,7 @@ namespace WinPulseOptimizer
                 LstStartupApps.ItemsSource = startup.StartupApps;
 
                 var saved = startup.Saved;
+                SyncThemeSelector(ThemeManager.ParseMode(saved.ThemeMode));
                 _lastUpdateCheckUtc = saved.LastUpdateCheckUtc;
                 SwAutoGame.IsChecked = saved.AutoGameSwitch;
                 SwAutoBattery.IsChecked = saved.AutoBatteryChill;
@@ -474,15 +472,32 @@ namespace WinPulseOptimizer
                 "Pestaña 0: Automatización inteligente", 0, "", new(SystemAction.AutoStart, Enabled: enable));
         }
 
-        private void ApplyDarkTitleBar()
+        private void SyncThemeSelector(AppThemeMode mode)
         {
-            try
+            string tag = ThemeManager.SerializeMode(mode);
+            foreach (ComboBoxItem item in CmbThemeMode.Items)
             {
-                var hwnd = new WindowInteropHelper(this).Handle;
-                int useDarkMode = 1;
-                DwmSetWindowAttribute(hwnd, 20, ref useDarkMode, sizeof(int));
+                if (string.Equals(item.Tag?.ToString(), tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    CmbThemeMode.SelectedItem = item;
+                    return;
+                }
             }
-            catch { }
+            CmbThemeMode.SelectedIndex = 0;
+        }
+
+        private void CmbThemeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_loading || CmbThemeMode.SelectedItem is not ComboBoxItem item) return;
+            var mode = ThemeManager.ParseMode(item.Tag?.ToString());
+            ThemeManager.ApplyTheme(mode);
+
+            var store = HistoryManager.Load();
+            store.ThemeMode = ThemeManager.SerializeMode(mode);
+            if (!HistoryManager.Save(store))
+                Log("No se pudo guardar la preferencia de tema.");
+            else
+                Log($"Tema visual cambiado a «{item.Content}».");
         }
 
         private async void BtnGoToSection_Click(object sender, RoutedEventArgs e)

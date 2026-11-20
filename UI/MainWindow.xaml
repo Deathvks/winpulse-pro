@@ -35,7 +35,7 @@
                         <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="WinPulse Pro" FontSize="23" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
                                        Margin="0,0,10,3" VerticalAlignment="Center"/>
-                            <Border Background="#15171C" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
+                            <Border Background="{DynamicResource BadgeBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
                                     CornerRadius="6" Padding="8,3" Margin="0,1,10,3" VerticalAlignment="Center">
                                 <TextBlock x:Name="TxtOsBadge" Text="Windows 11" FontFamily="{DynamicResource MonoFont}" FontSize="11"
                                            FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
@@ -59,12 +59,19 @@
                                            Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                             <ProgressBar IsIndeterminate="True" Height="2.5" Margin="0,4,0,0"
-                                         Foreground="{DynamicResource AccentBrush}" Background="#242730" BorderThickness="0"/>
+                                         Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource ProgressTrackBrush}" BorderThickness="0"/>
                         </StackPanel>
                     </Border>
                     <Border x:Name="BadgePower" Background="Transparent" Padding="6,4" VerticalAlignment="Center" Margin="0,0,10,0">
                         <TextBlock x:Name="TxtPowerState" Text="Conectado a la corriente" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
                     </Border>
+                    <ComboBox x:Name="CmbThemeMode" Width="136" MinHeight="32" Margin="0,0,8,0" VerticalAlignment="Center"
+                              SelectionChanged="CmbThemeMode_SelectionChanged"
+                              ToolTip="Elige el tema visual: adaptar al sistema, oscuro o claro.">
+                        <ComboBoxItem Content="Tema: Sistema" Tag="System"/>
+                        <ComboBoxItem Content="Tema: Oscuro" Tag="Dark"/>
+                        <ComboBoxItem Content="Tema: Claro" Tag="Light"/>
+                    </ComboBox>
                     <Button x:Name="BtnToggleActivityLog" Content="Registro" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0"
                             ToolTip="Abrir registro de actividad" AutomationProperties.Name="Abrir registro de actividad"
                             Click="BtnToggleActivityLog_Click"/>
@@ -636,7 +643,7 @@
                                 <ItemsControl x:Name="LstDgpuGames">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="#131418" BorderBrush="#26282E" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,8">
+                                            <Border Background="{DynamicResource RowBrush}" BorderBrush="{DynamicResource RowStrokeBrush}" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,8">
                                                 <DockPanel>
                                                     <Button DockPanel.Dock="Right" Content="Quitar" Style="{StaticResource DangerBtn}" Padding="10,5"
                                                             Tag="{Binding ExecutablePath}" Click="BtnRemoveDgpuGame_Click" Margin="12,0,0,0" VerticalAlignment="Center"/>

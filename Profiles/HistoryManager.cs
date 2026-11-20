@@ -52,6 +52,7 @@ namespace WinPulseOptimizer
     public class AuditStore
     {
         public string ActiveProfileTag { get; set; } = "";
+        public string ThemeMode { get; set; } = "System";
         public bool AutoGameSwitch { get; set; } = true;
         public bool AutoBatteryChill { get; set; } = true;
         public bool AutoGameOnBattery { get; set; }
