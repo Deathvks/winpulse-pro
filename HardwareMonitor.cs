@@ -175,6 +175,8 @@ namespace WinPulseOptimizer
         internal static bool? HasSystemBattery() => GetSystemPowerStatus(out var status)
             ? InterpretBatteryFlag(status.BatteryFlag) : null;
 
+        internal static bool SupportsBatterySettings => HasSystemBattery() != false;
+
         internal static bool? InterpretBatteryFlag(byte flag) => flag == 255 ? null : (flag & 128) == 0;
 
         internal static int? ReadDischargingBatteryPercentage()

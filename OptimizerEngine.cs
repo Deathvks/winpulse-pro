@@ -134,7 +134,9 @@ namespace WinPulseOptimizer
                 $"Aviso de batería baja: {FmtPercent(lowLevel)}  |  Nivel crítico: {FmtPercent(critLevel)}");
         }
 
-        private static string AcDc(string ac, string dc) => $"Enchufado: {ac}  |  Batería: {dc}";
+        private static bool SupportsBattery => HardwareMonitor.SupportsBatterySettings;
+
+        private static string AcDc(string ac, string dc) => SupportsBattery ? $"Enchufado: {ac}  |  Batería: {dc}" : ac;
         private static string FmtPercent(uint? value) => value.HasValue ? $"{value}%" : "—";
         private static string FmtProcessor(uint? min, uint? max, uint? cores) =>
             $"{FmtPercent(min)}–{FmtPercent(max)} ({FmtPercent(cores)} núcleos)";
@@ -183,7 +185,7 @@ namespace WinPulseOptimizer
 
         private static string ReadDisplayedPowerMode()
         {
-            bool battery = !HardwareMonitor.IsAcOnline();
+            bool battery = SupportsBattery && !HardwareMonitor.IsAcOnline();
             try
             {
                 return ReadPowerMode(battery)?.ToString() ??
@@ -303,7 +305,8 @@ namespace WinPulseOptimizer
             WritePower(plan, "PROCTHROTTLEMIN", false, limits.MinimumOnAc, optional: optionalLimits, planBlocked: planBlocked);
             if (profile != UsageProfile.GamingMax)
                 WritePower(plan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc, optional: optionalLimits, planBlocked: planBlocked);
-            WritePower(plan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery, optional: optionalLimits, planBlocked: planBlocked);
+            if (SupportsBattery)
+                WritePower(plan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery, optional: optionalLimits, planBlocked: planBlocked);
 
             // Profiles reuse existing plans, so restore timeouts left by a prior profile.
             if (profile != UsageProfile.GamingMax)
@@ -346,7 +349,8 @@ namespace WinPulseOptimizer
                     _ => Guid.Empty
                 };
                 WritePowerMode(false, mode, optional: true);
-                WritePowerMode(true, mode, optional: true);
+                if (SupportsBattery)
+                    WritePowerMode(true, mode, optional: true);
             }
 
             if (plan.HasValue && (ActivePlan() != plan.Value || (_strictPlanLimitsCheck && !HasProfileProcessorLimits(profile, plan.Value))))
@@ -358,7 +362,8 @@ namespace WinPulseOptimizer
             var limits = GetProfileProcessorLimits(profile);
             return QueryPower(plan, "PROCTHROTTLEMIN", false, out uint minimum) == 0 && minimum == limits.MinimumOnAc &&
                 QueryPower(plan, "PROCTHROTTLEMAX", false, out uint maximum) == 0 && maximum == limits.MaximumOnAc &&
-                QueryPower(plan, "PROCTHROTTLEMAX", true, out uint batteryMaximum) == 0 && batteryMaximum == limits.MaximumOnBattery;
+                (!SupportsBattery || (QueryPower(plan, "PROCTHROTTLEMAX", true, out uint batteryMaximum) == 0 &&
+                    batteryMaximum == limits.MaximumOnBattery));
         }
 
         internal static string GetProfilePowerSummary(UsageProfile profile)
@@ -367,7 +372,9 @@ namespace WinPulseOptimizer
             if (plan == Guid.Empty) return "Windows no informó el plan activo.";
             if (!HasProfileProcessorLimits(profile, plan)) return $"Plan activo: {name}. Límites de CPU del perfil sin verificar.";
             var limits = GetProfileProcessorLimits(profile);
-            return $"Plan activo: {name}. CPU configurada al {limits.MinimumOnAc}–{limits.MaximumOnAc}% enchufado y máximo {limits.MaximumOnBattery}% en batería.";
+            return SupportsBattery
+                ? $"Plan activo: {name}. CPU configurada al {limits.MinimumOnAc}–{limits.MaximumOnAc}% enchufado y máximo {limits.MaximumOnBattery}% en batería."
+                : $"Plan activo: {name}. CPU configurada al {limits.MinimumOnAc}–{limits.MaximumOnAc}%.";
         }
 
         public static TweakState ReadCurrentState()
@@ -815,7 +822,8 @@ namespace WinPulseOptimizer
             Guid plan = planBlocked ? ReadActivePlanDetails().Id : ActivePlan();
             if (!optional) TryReactivateActivePlan(plan, optional: true);
             bool changed = WritePower(plan, "CPMINCORES", false, disableOnAc ? 100u : minimumOnAc, optional, planBlocked);
-            changed |= WritePower(plan, "CPMINCORES", true, 5, optional, planBlocked);
+            if (SupportsBattery)
+                changed |= WritePower(plan, "CPMINCORES", true, 5, optional, planBlocked);
             if (changed) TryReactivateActivePlan(plan, optional: true);
         }
 
@@ -829,7 +837,8 @@ namespace WinPulseOptimizer
             if (!optional) TryReactivateActivePlan(plan, optional: true);
             bool changed = WritePower(plan, "USB", false, disableOnAc ? 0u : 1u, optional, planBlocked);
             changed |= WritePower(plan, "PCIE", false, disableOnAc ? 0u : 2u, optional, planBlocked);
-            changed |= WritePower(plan, "PCIE", true, 2, optional, planBlocked);
+            if (SupportsBattery)
+                changed |= WritePower(plan, "PCIE", true, 2, optional, planBlocked);
             if (changed) TryReactivateActivePlan(plan, optional: true);
         }
 

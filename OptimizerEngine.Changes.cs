@@ -561,7 +561,7 @@ namespace WinPulseOptimizer
 
         private static void RememberPowerModes()
         {
-            foreach (bool battery in new[] { false, true })
+            foreach (bool battery in SupportsBattery ? new[] { false, true } : new[] { false })
             {
                 Guid? mode;
                 try { mode = ReadPowerMode(battery); }

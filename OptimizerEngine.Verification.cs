@@ -99,21 +99,21 @@ public static partial class OptimizerEngine
         var limits = GetProfileProcessorLimits(profile);
         if (RequiredPowerDiffers(store, targetPlan, "PROCTHROTTLEMIN", false, limits.MinimumOnAc) ||
             RequiredPowerDiffers(store, targetPlan, "PROCTHROTTLEMAX", false, limits.MaximumOnAc) ||
-            RequiredPowerDiffers(store, targetPlan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery))
+            (SupportsBattery && RequiredPowerDiffers(store, targetPlan, "PROCTHROTTLEMAX", true, limits.MaximumOnBattery)))
         {
             differences.Add("Límites de CPU");
         }
 
         uint minCoresAc = values.DisableCoreParking ? 100u : (profile == UsageProfile.StudyWork ? 25u : 5u);
         if (OptionalPowerDiffers(store, targetPlan, "CPMINCORES", false, minCoresAc) ||
-            OptionalPowerDiffers(store, targetPlan, "CPMINCORES", true, 5u))
+            (SupportsBattery && OptionalPowerDiffers(store, targetPlan, "CPMINCORES", true, 5u)))
         {
             differences.Add("Núcleos activos");
         }
 
         if (OptionalPowerDiffers(store, targetPlan, "USB", false, values.DisableUsbPciePowerSave ? 0u : 1u) ||
             OptionalPowerDiffers(store, targetPlan, "PCIE", false, values.DisableUsbPciePowerSave ? 0u : 2u) ||
-            OptionalPowerDiffers(store, targetPlan, "PCIE", true, 2u))
+            (SupportsBattery && OptionalPowerDiffers(store, targetPlan, "PCIE", true, 2u)))
         {
             differences.Add("Ahorro de energía USB/PCIe");
         }
@@ -160,7 +160,7 @@ public static partial class OptimizerEngine
             _ => Guid.Empty
         };
 
-        foreach (bool battery in new[] { false, true })
+        foreach (bool battery in SupportsBattery ? new[] { false, true } : new[] { false })
         {
             try
             {
@@ -241,7 +241,7 @@ public static partial class OptimizerEngine
         {
             Guid plan = ActivePlan();
             return QueryPower(plan, "CPMINCORES", false, out uint ac) == 0 && ac == (disableOnAc ? 100u : 5u) &&
-                QueryPower(plan, "CPMINCORES", true, out uint dc) == 0 && dc == 5u;
+                (!SupportsBattery || (QueryPower(plan, "CPMINCORES", true, out uint dc) == 0 && dc == 5u));
         }
         catch { return false; }
     }
@@ -253,7 +253,7 @@ public static partial class OptimizerEngine
             Guid plan = ActivePlan();
             return QueryPower(plan, "USB", false, out uint usbAc) == 0 && usbAc == (disableOnAc ? 0u : 1u) &&
                 QueryPower(plan, "PCIE", false, out uint pcieAc) == 0 && pcieAc == (disableOnAc ? 0u : 2u) &&
-                QueryPower(plan, "PCIE", true, out uint pcieDc) == 0 && pcieDc == 2u;
+                (!SupportsBattery || (QueryPower(plan, "PCIE", true, out uint pcieDc) == 0 && pcieDc == 2u));
         }
         catch { return false; }
     }

@@ -460,7 +460,8 @@ namespace WinPulseOptimizer
             string cleanPlan = CleanPlanName(b.PowerPlan);
             TxtBaselineDate.Text = $"Guardado el {b.CapturedAt:dd/MM/yyyy} a las {b.CapturedAt:HH:mm}";
 
-            TxtOrigLine1.Text = $"1. Energía y Memoria: Tu portátil venía con el plan '{cleanPlan}' y tenía {b.UsedRamGb:0.00} GB de RAM ocupados (de {b.TotalRamGb:0.0} GB totales).";
+            string deviceLabel = _hasBattery == false ? "Tu PC de sobremesa" : "Tu portátil";
+            TxtOrigLine1.Text = $"1. Energía y Memoria: {deviceLabel} venía con el plan '{cleanPlan}' y tenía {b.UsedRamGb:0.00} GB de RAM ocupados (de {b.TotalRamGb:0.0} GB totales).";
             TxtOrigLine2.Text = $"2. Gráfica y Juegos: La aceleración gráfica (HAGS) venía {(b.Hags ? "activada" : "desactivada")}, el Modo Juego {(b.GameMode ? "activado" : "desactivado")} y la mejora para juegos en ventana {(b.WindowedOpt ? "activada" : "desactivada")}.";
             TxtOrigLine3.Text = $"3. Potencia de Procesador: Los núcleos estaban {(b.DisableCoreParking ? "siempre despiertos" : "en modo ahorro (dormidos en reposo)")}, el temporizador rápido de FPS estaba {(b.HighResTimer ? "activado" : "desactivado")} y la prioridad alta para juegos {(b.MmcssGaming ? "activada" : "desactivada")}.";
             TxtOrigLine4.Text = $"4. Red y Puertos USB: La respuesta rápida de red (menor ping) estaba {(b.DisableNagle ? "activada" : "desactivada")} y el ahorro de energía en USB/gráfica estaba {(b.DisableUsbPciePowerSave ? "desactivado" : "activado")}.";
@@ -807,6 +808,8 @@ namespace WinPulseOptimizer
             BatteryGameOptions.Visibility = batteryVisibility;
             BatteryPowerDetails.Visibility = batteryVisibility;
             BatteryBenchmarkCard.Visibility = batteryVisibility;
+            if (_hasBattery == false)
+                BtnProfileChill.ToolTip = "CPU máx. 80 %, modo Eficiencia energética, bloquea apps en segundo plano y reanuda servicios pausados.";
             UpdatePowerBadge();
         }
 
@@ -1090,7 +1093,13 @@ namespace WinPulseOptimizer
 
         private void UpdatePowerBadge()
         {
-            bool? ac = _hasBattery == false ? true : HardwareMonitor.GetAcState();
+            if (_hasBattery == false)
+            {
+                TxtPowerState.Text = "PC de sobremesa · corriente";
+                TxtPowerState.SetResourceReference(TextBlock.ForegroundProperty, "SuccessBrush");
+                return;
+            }
+            bool? ac = HardwareMonitor.GetAcState();
             TxtPowerState.Text = ac switch
             {
                 true => "Conectado a la corriente",
