@@ -86,7 +86,7 @@ public static partial class OptimizerEngine
         bool modernStandby = SupportsModernStandby();
         var schemes = GetPowerSchemes();
         bool balancedAvailable = !enforced.HasValue && schemes.Any(s => s.Id == Guid.Parse(GuidBalanced));
-        Guid expectedPlan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable, schemes);
+        Guid expectedPlan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable, schemes, SupportsBattery);
         string? expectedPlanDisplay = ReadReportValue(() => FormatReportPlan(expectedPlan));
         bool planBlocked = IsSettingBlockedInStore(store, "activePlan", "", expectedPlanDisplay);
 
@@ -104,7 +104,7 @@ public static partial class OptimizerEngine
             differences.Add("Límites de CPU");
         }
 
-        uint minCoresAc = values.DisableCoreParking ? 100u : (profile == UsageProfile.StudyWork ? 25u : 5u);
+        uint minCoresAc = GetMinimumActiveCoresPercent(profile, values.DisableCoreParking);
         if (OptionalPowerDiffers(store, targetPlan, "CPMINCORES", false, minCoresAc) ||
             (SupportsBattery && OptionalPowerDiffers(store, targetPlan, "CPMINCORES", true, 5u)))
         {
@@ -112,7 +112,7 @@ public static partial class OptimizerEngine
         }
 
         if (OptionalPowerDiffers(store, targetPlan, "USB", false, values.DisableUsbPciePowerSave ? 0u : 1u) ||
-            OptionalPowerDiffers(store, targetPlan, "PCIE", false, values.DisableUsbPciePowerSave ? 0u : 2u) ||
+            OptionalPowerDiffers(store, targetPlan, "PCIE", false, GetPciePowerSaveAc(profile, values.DisableUsbPciePowerSave)) ||
             (SupportsBattery && OptionalPowerDiffers(store, targetPlan, "PCIE", true, 2u)))
         {
             differences.Add("Ahorro de energía USB/PCIe");
@@ -129,7 +129,7 @@ public static partial class OptimizerEngine
         }
         else
         {
-            if (profile == UsageProfile.StudyWork && OptionalPowerDiffers(store, targetPlan, "STANDBYIDLE", false, 1800u))
+            if (profile == UsageProfile.StudyWork && OptionalPowerDiffers(store, targetPlan, "STANDBYIDLE", false, GetStudyStandbySeconds()))
                 differences.Add("Tiempo de suspensión");
             else if (profile != UsageProfile.StudyWork && OriginalPowerDiffers(store, targetPlan, "STANDBYIDLE", false))
                 differences.Add("Tiempo de suspensión");

@@ -105,10 +105,11 @@ internal static class SystemOperations
         OptimizerEngine.SetGameDvr(state.DisableGameDvr);
         OptimizerEngine.SetMmcssGaming(state.MmcssGaming);
         OptimizerEngine.SetForegroundPriority(state.ForegroundPriority);
-        OptimizerEngine.SetCoreParking(state.DisableCoreParking, profile == UsageProfile.StudyWork ? 25u : 5u,
+        OptimizerEngine.SetCoreParking(state.DisableCoreParking, OptimizerEngine.GetMinimumActiveCoresPercent(profile, false),
             optional: true, planBlocked: !plan.HasValue);
         OptimizerEngine.SetHeavyServicesSuspended(state.SuspendHeavyServices);
-        OptimizerEngine.SetUsbAndPciePowerSave(state.DisableUsbPciePowerSave, optional: true, planBlocked: !plan.HasValue);
+        OptimizerEngine.SetUsbAndPciePowerSave(state.DisableUsbPciePowerSave, optional: true, planBlocked: !plan.HasValue,
+            pcieSaveAc: OptimizerEngine.GetPciePowerSaveAc(profile, state.DisableUsbPciePowerSave));
         OptimizerEngine.SetNagleAlgorithm(state.DisableNagle, optional: true);
         OptimizerEngine.SetBackgroundApps(state.LimitBackgroundApps);
         OptimizerEngine.ApplyProfilePowerMode(profile, plan);

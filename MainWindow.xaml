@@ -97,21 +97,21 @@
                         <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="0,0,8,0">
                             <StackPanel>
                                 <ContentControl Content="Jugar (Máximo)" Tag="{StaticResource GameGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
-                                <TextBlock Text="CPU 5–100 %, turbo agresivo, Modo Juego, HAGS, núcleos activos, prioridad MMCSS/red/USB y pausa servicios pesados." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="TxtGuideJugar" Text="CPU 5–100 %, turbo agresivo, Modo Juego, HAGS, núcleos activos, prioridad MMCSS/red/USB y pausa servicios pesados." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="4,0,4,0">
                             <StackPanel>
                                 <ContentControl Content="Estudiar / Trabajar" Tag="{StaticResource StudyGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
-                                <TextBlock Text="CPU 5–100 %, modo Equilibrado, reanuda servicios pausados, mantiene Modo Juego, HAGS, ventana sin bordes, prioridad activa y TCP." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="TxtGuideEstudiar" Text="CPU 5–100 %, modo Equilibrado, reanuda servicios pausados, mantiene Modo Juego, HAGS, ventana sin bordes, prioridad activa y TCP." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="4,0,4,0">
                             <StackPanel>
                                 <ContentControl Content="Estar Chill" Tag="{StaticResource QuietGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
-                                <TextBlock Text="Ahorro: máx. CPU 80 % enchufado y 70 % batería, modo Eficiencia energética, bloquea apps en segundo plano y reanuda servicios." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="TxtGuideChill" Text="Ahorro: máx. CPU 80 % enchufado y 70 % batería, modo Eficiencia energética, bloquea apps en segundo plano y reanuda servicios." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 

@@ -647,8 +647,10 @@ namespace WinPulseOptimizer
                 }
                 else
                 {
-                    TxtPlanRecommendationBody.Text = $"Para ahorrar más batería y carga de GPU integrada: {string.Join(" y ", missing)} (sin UAC).";
-                    BtnApplyPlanRecommendation.Content = "Aplicar ahorro Chill";
+                    TxtPlanRecommendationBody.Text = _hasBattery == false
+                        ? $"Para mantener el PC más fresco, silencioso y ligero: {string.Join(" y ", missing)} (sin UAC)."
+                        : $"Para ahorrar más batería y carga de GPU integrada: {string.Join(" y ", missing)} (sin UAC).";
+                    BtnApplyPlanRecommendation.Content = _hasBattery == false ? "Aplicar modo Chill" : "Aplicar ahorro Chill";
                     BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
                 }
                 return;
@@ -809,7 +811,14 @@ namespace WinPulseOptimizer
             BatteryPowerDetails.Visibility = batteryVisibility;
             BatteryBenchmarkCard.Visibility = batteryVisibility;
             if (_hasBattery == false)
-                BtnProfileChill.ToolTip = "CPU máx. 80 %, modo Eficiencia energética, bloquea apps en segundo plano y reanuda servicios pausados.";
+            {
+                BtnProfileJugar.ToolTip = "Máximo rendimiento (sin suspensión), CPU 5–100 % con turbo agresivo, núcleos al 100 %, Modo Juego, HAGS, pausa servicios pesados y USB/PCIe sin ahorro.";
+                BtnProfileEstudiar.ToolTip = "Equilibrado (suspensión 60 min), CPU 5–100 % y 50 % núcleos activos, reanuda servicios pausados, mantiene Modo Juego, HAGS, prioridad activa y ajuste TCP.";
+                BtnProfileChill.ToolTip = "Modo fresco y silencioso: plan Equilibrado, CPU máx. 85 %, 10 % núcleos activos, ahorro PCIe moderado, bloquea apps en segundo plano y reanuda servicios.";
+                TxtGuideJugar.Text = "Sobremesa: plan Máximo rendimiento, CPU 5–100 %, turbo agresivo, núcleos al 100 %, Modo Juego, HAGS, prioridad MMCSS/red/USB y pausa servicios pesados.";
+                TxtGuideEstudiar.Text = "Sobremesa: plan Equilibrado (suspensión 60 min), CPU 5–100 % con 50 % núcleos activos, reanuda servicios y mantiene Modo Juego, HAGS, prioridad activa y TCP.";
+                TxtGuideChill.Text = "Sobremesa silencioso: plan Equilibrado, CPU máx. 85 %, ahorro PCIe moderado, bloquea apps en segundo plano y reanuda servicios.";
+            }
             UpdatePowerBadge();
         }
 

@@ -207,9 +207,22 @@ namespace WinPulseOptimizer
             profile switch
             {
                 UsageProfile.GamingMax => (5, 100, 100),
-                UsageProfile.ChillBattery => (5, 80, 70),
+                UsageProfile.ChillBattery => (5, SupportsBattery ? 80u : 85u, 70),
                 _ => (5, 100, 100)
             };
+
+        internal static uint GetMinimumActiveCoresPercent(UsageProfile profile, bool disableCoreParking) =>
+            disableCoreParking ? 100u : profile switch
+            {
+                UsageProfile.StudyWork => SupportsBattery ? 25u : 50u,
+                UsageProfile.ChillBattery => SupportsBattery ? 5u : 10u,
+                _ => 5u
+            };
+
+        internal static uint GetPciePowerSaveAc(UsageProfile profile, bool disableOnAc) =>
+            disableOnAc ? 0u : (profile == UsageProfile.ChillBattery && !SupportsBattery ? 1u : 2u);
+
+        internal static uint GetStudyStandbySeconds() => SupportsBattery ? 1800u : 3600u;
 
         internal static Guid? ReadEnforcedPowerPlan()
         {
@@ -221,7 +234,7 @@ namespace WinPulseOptimizer
         private static bool _strictPlanLimitsCheck;
 
         internal static Guid ChooseWritablePowerPlan(UsageProfile profile, Guid active, bool modernStandby,
-            bool policyEnforced, bool balancedAvailable, WindowsPowerPlanItem[]? availableSchemes = null)
+            bool policyEnforced, bool balancedAvailable, WindowsPowerPlanItem[]? availableSchemes = null, bool supportsBattery = true)
         {
             if (policyEnforced) return active;
             var schemes = availableSchemes ?? GetPowerSchemes();
@@ -248,7 +261,7 @@ namespace WinPulseOptimizer
                     if (ByName("Alto rendimiento", "High Performance") is Guid customHigh) return customHigh;
                 }
             }
-            else if (!modernStandby && profile == UsageProfile.ChillBattery)
+            else if (supportsBattery && !modernStandby && profile == UsageProfile.ChillBattery)
             {
                 var saver = Guid.Parse(GuidPowerSaver);
                 if (Has(saver)) return saver;
@@ -284,10 +297,10 @@ namespace WinPulseOptimizer
             bool modernStandby = SupportsModernStandby();
             var schemes = GetPowerSchemes();
             bool balancedAvailable = !enforced.HasValue && schemes.Any(s => s.Id == Guid.Parse(GuidBalanced));
-            Guid plan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable, schemes);
+            Guid plan = ChooseWritablePowerPlan(profile, active, modernStandby, enforced.HasValue, balancedAvailable, schemes, SupportsBattery);
             if (enforced.HasValue)
                 _operationNotices?.Add($"La directiva de Windows mantiene el plan {ReadPlanName(active) ?? active.ToString()}.");
-            else if ((modernStandby || profile is UsageProfile.FactoryDefault or UsageProfile.StudyWork) && !balancedAvailable)
+            else if ((modernStandby || !SupportsBattery || profile is UsageProfile.FactoryDefault or UsageProfile.StudyWork) && !balancedAvailable)
                 _operationNotices?.Add("Equilibrado no está disponible. Se conserva el plan actual.");
             bool switched = TryActivateProfilePlan(plan, out bool canReactivate);
             if (!switched)
@@ -326,7 +339,7 @@ namespace WinPulseOptimizer
                     WritePower(plan, "STANDBYIDLE", false, 0, optional: true, planBlocked: planBlocked);
                     break;
                 case UsageProfile.StudyWork:
-                    WritePower(plan, "STANDBYIDLE", false, 1800, optional: true, planBlocked: planBlocked);
+                    WritePower(plan, "STANDBYIDLE", false, GetStudyStandbySeconds(), optional: true, planBlocked: planBlocked);
                     break;
             }
 
@@ -830,13 +843,13 @@ namespace WinPulseOptimizer
         public static void SetUsbAndPciePowerSave(bool disableOnAc, bool optional = false) =>
             SetUsbAndPciePowerSave(disableOnAc, optional, planBlocked: false);
 
-        internal static void SetUsbAndPciePowerSave(bool disableOnAc, bool optional, bool planBlocked)
+        internal static void SetUsbAndPciePowerSave(bool disableOnAc, bool optional, bool planBlocked, uint pcieSaveAc = 2u)
         {
             if (planBlocked && _profileSettings == null) return;
             Guid plan = planBlocked ? ReadActivePlanDetails().Id : ActivePlan();
             if (!optional) TryReactivateActivePlan(plan, optional: true);
             bool changed = WritePower(plan, "USB", false, disableOnAc ? 0u : 1u, optional, planBlocked);
-            changed |= WritePower(plan, "PCIE", false, disableOnAc ? 0u : 2u, optional, planBlocked);
+            changed |= WritePower(plan, "PCIE", false, disableOnAc ? 0u : pcieSaveAc, optional, planBlocked);
             if (SupportsBattery)
                 changed |= WritePower(plan, "PCIE", true, 2, optional, planBlocked);
             if (changed) TryReactivateActivePlan(plan, optional: true);
