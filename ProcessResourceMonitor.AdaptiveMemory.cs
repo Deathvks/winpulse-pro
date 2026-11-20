@@ -62,6 +62,13 @@ internal static partial class ProcessResourceMonitor
         return null;
     }
 
+    internal static bool TryEmptyProcessWorkingSet(int pid)
+    {
+        const uint SetQuota = 0x0100;
+        using var handle = OpenProcess(QueryLimitedInformation | SetQuota, false, pid);
+        return !handle.IsInvalid && EmptyWorkingSet(handle);
+    }
+
     internal static bool TryAdjustBackgroundMemory(BackgroundMemoryCandidate candidate)
     {
         const uint SetQuota = 0x0100;

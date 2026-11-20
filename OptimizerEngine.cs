@@ -204,7 +204,7 @@ namespace WinPulseOptimizer
         internal static (uint MinimumOnAc, uint MaximumOnAc, uint MaximumOnBattery) GetProfileProcessorLimits(UsageProfile profile) =>
             profile switch
             {
-                UsageProfile.GamingMax => (100, 100, 100),
+                UsageProfile.GamingMax => (5, 100, 100),
                 UsageProfile.ChillBattery => (5, 80, 70),
                 _ => (5, 100, 100)
             };
@@ -380,7 +380,7 @@ namespace WinPulseOptimizer
 
             bool disableDvr = GetDword(Registry.CurrentUser, P("System", "GameConfigStore"), "GameDVR_Enabled", 1) == 0;
             bool mmcss = GetDword(Registry.LocalMachine, P("SOFTWARE", "Microsoft", "Windows NT", "CurrentVersion", "Multimedia", "SystemProfile"), "SystemResponsiveness", 20) <= 10;
-            bool fgPrio = GetDword(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", 2) == 26;
+            bool fgPrio = GetDword(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", 2) == 38;
             bool bgApps = GetDword(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "BackgroundAccessApplications"), "GlobalUserDisabled", 0) == 1;
 
             Guid plan = ActivePlan();
@@ -462,13 +462,18 @@ namespace WinPulseOptimizer
                     [IO.Path]::GetFileName(([string]$actions[0].Execute).Trim([char]34)) -ne 'WinPulseOptimizer.exe') {
                     throw 'La tarea de inicio tiene una acción distinta de la que configura WinPulse.'
                 }
-                if ($actions[0].Execute -eq $target -and $task.Principal.RunLevel -eq 'Limited') { return }
+                $settings = $task.Settings
+                $settingsOk = (-not $settings.DisallowStartIfOnBatteries) -and (-not $settings.StopIfGoingOnBatteries) -and
+                    ($settings.ExecutionTimeLimit -eq 'PT0S') -and [bool]$settings.StartWhenAvailable
+                if ($actions[0].Execute -eq $target -and $task.Principal.RunLevel -eq 'Limited' -and $settingsOk) { return }
 
                 $enabled = [bool]$task.Settings.Enabled
                 $action = New-ScheduledTaskAction -Execute $target -Argument '--minimized' -WorkingDirectory (Split-Path -LiteralPath $target)
                 $principal = $task.Principal
                 $principal.RunLevel = 'Limited'
-                Set-ScheduledTask -TaskName '{{AutoStartTask}}' -TaskPath '\' -Action $action -Principal $principal | Out-Null
+                $newSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                    -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -StartWhenAvailable
+                Set-ScheduledTask -TaskName '{{AutoStartTask}}' -TaskPath '\' -Action $action -Principal $principal -Settings $newSettings | Out-Null
                 $updated = Get-ScheduledTask -TaskName '{{AutoStartTask}}' -TaskPath '\'
                 if ([bool]$updated.Settings.Enabled -ne $enabled) {
                     if ($enabled) { Enable-ScheduledTask -InputObject $updated | Out-Null }
@@ -477,8 +482,9 @@ namespace WinPulseOptimizer
                 }
                 if (@($updated.Actions).Count -ne 1 -or $updated.Actions[0].Execute -ne $target -or
                     $updated.Actions[0].Arguments -ne '--minimized' -or $updated.Principal.RunLevel -ne 'Limited' -or
+                    [bool]$updated.Settings.DisallowStartIfOnBatteries -or [bool]$updated.Settings.StopIfGoingOnBatteries -or
                     [bool]$updated.Settings.Enabled -ne $enabled) {
-                    throw 'Windows no confirmó la nueva ruta de la tarea de inicio.'
+                    throw 'Windows no confirmó la nueva configuración de la tarea de inicio.'
                 }
                 """);
         }
@@ -537,8 +543,18 @@ namespace WinPulseOptimizer
             else if (current == "Absent" && desired == "Enabled")
             {
                 string exePath = Environment.ProcessPath ?? throw new IOException("No se encontró el ejecutable de WinPulse.");
-                RunChecked("schtasks.exe", "/create", "/tn", AutoStartTask, "/tr", $"\"{exePath}\" --minimized",
-                    "/sc", "onlogon", "/rl", "limited", "/ru", $@"{Environment.UserDomainName}\{Environment.UserName}");
+                string target = exePath.Replace("'", "''");
+                string user = $@"{Environment.UserDomainName}\{Environment.UserName}".Replace("'", "''");
+                RunPowerShell($$"""
+                    $target = '{{target}}'
+                    $user = '{{user}}'
+                    $action = New-ScheduledTaskAction -Execute $target -Argument '--minimized' -WorkingDirectory (Split-Path -LiteralPath $target)
+                    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+                    $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+                    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                        -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -StartWhenAvailable
+                    Register-ScheduledTask -TaskName '{{AutoStartTask}}' -TaskPath '\' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+                    """);
             }
             else if (current != "Absent" && desired is "Enabled" or "Disabled")
             {
@@ -555,6 +571,9 @@ namespace WinPulseOptimizer
 
         public static (int Trimmed, int Skipped) TrimMemoryWorkingSets()
         {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            GC.WaitForPendingFinalizers();
+
             int trimmed = 0, skipped = 0;
             foreach (var proc in Process.GetProcesses())
             {
@@ -563,8 +582,10 @@ namespace WinPulseOptimizer
                     try
                     {
                         if (proc.Id <= 4) continue;
-                        if (EmptyWorkingSet(proc.Handle)) trimmed++;
-                        else skipped++;
+                        if (ProcessResourceMonitor.TryEmptyProcessWorkingSet(proc.Id) || EmptyWorkingSet(proc.Handle))
+                            trimmed++;
+                        else
+                            skipped++;
                     }
                     catch { skipped++; }
                 }
@@ -759,7 +780,7 @@ namespace WinPulseOptimizer
             SetDword(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "Session Manager", "kernel"), "GlobalTimerResolutionRequests", enable ? 1 : 0);
 
         public static void SetForegroundPriority(bool enable) =>
-            SetDword(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", enable ? 26 : 2);
+            SetDword(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", enable ? 38 : 2);
 
         public static void SetWindowedOptimizations(bool enable)
         {

@@ -67,7 +67,7 @@
                 <DockPanel LastChildFill="True">
                     <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
                         <Button x:Name="BtnProfileJugar" Content="Jugar (Máximo)" Style="{StaticResource ProfileBtn}" Click="BtnJugar_Click" Margin="0,2,8,2"
-                                ToolTip="CPU al 100 % enchufado/batería, turbo agresivo, Modo Juego, HAGS, temporizador 0,5 ms, núcleos activos, pausa servicios pesados y activa Mejor rendimiento."/>
+                                ToolTip="CPU 5–100 %, turbo agresivo, Modo Juego, HAGS, núcleos activos, pausa servicios pesados y activa Mejor rendimiento."/>
                         <Button x:Name="BtnProfileEstudiar" Content="Estudiar / Trabajar" Style="{StaticResource ProfileBtn}" Click="BtnEstudiar_Click" Margin="0,2,8,2"
                                 ToolTip="CPU 5–100 %, modo Equilibrado, reanuda servicios pausados, Modo Juego, HAGS, ventana sin bordes, prioridad activa y ajuste TCP."/>
                         <Button x:Name="BtnProfileChill" Content="Estar Chill" Style="{StaticResource ProfileBtn}" Click="BtnChill_Click" Margin="0,2,8,2"
@@ -97,7 +97,7 @@
                         <Border Style="{StaticResource SettingRow}" Padding="14,12" Margin="0,0,8,0">
                             <StackPanel>
                                 <ContentControl Content="Jugar (Máximo)" Tag="{StaticResource GameGlyph}" Style="{StaticResource IconLabel}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
-                                <TextBlock Text="CPU al 100 %, turbo agresivo, Modo Juego, HAGS, temporizador 0,5 ms, núcleos activos, prioridad MMCSS/red/USB y pausa servicios pesados." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                <TextBlock Text="CPU 5–100 %, turbo agresivo, Modo Juego, HAGS, núcleos activos, prioridad MMCSS/red/USB y pausa servicios pesados." FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
@@ -643,7 +643,7 @@
             </TabItem>
 
             <!-- PESTAÑA 2 -->
-            <TabItem Header="Procesos y RAM" Tag="{StaticResource TasksGlyph}" Style="{StaticResource NavigationTab}">
+            <TabItem x:Name="TabProcesses" Header="Procesos y RAM" Tag="{StaticResource TasksGlyph}" Style="{StaticResource NavigationTab}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="0,0,12,8">
                         <Border Style="{StaticResource SectionCard}">

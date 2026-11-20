@@ -28,6 +28,8 @@ namespace WinPulseOptimizer
             _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(UpdateLiveMetricsSchedule));
             if (!_loading && ReferenceEquals(MainTabs.SelectedItem, TabNetwork))
                 await RefreshEthernetAdaptersAsync();
+            else if (!_loading && ReferenceEquals(MainTabs.SelectedItem, TabProcesses))
+                await RefreshTopProcessesAsync();
         }
 
         private async void BtnRefreshEthernet_Click(object sender, RoutedEventArgs e) =>

@@ -294,15 +294,18 @@ namespace WinPulseOptimizer
             var list = new List<ProcessItem>();
             foreach (var p in Process.GetProcesses())
             {
-                try
+                using (p)
                 {
-                    if (p.Id <= 4 || ProtectedProcs.Contains(p.ProcessName)) continue;
-                    double mb = Math.Round(p.WorkingSet64 / 1048576.0, 1);
-                    if (mb < 15) continue;
-                    string cat = p.SessionId == 0 ? "Servicio" : "Usuario";
-                    list.Add(new ProcessItem(p.Id, p.ProcessName, mb, cat));
+                    try
+                    {
+                        if (p.Id <= 4 || ProtectedProcs.Contains(p.ProcessName)) continue;
+                        double mb = Math.Round(p.WorkingSet64 / 1048576.0, 1);
+                        if (mb < 15) continue;
+                        string cat = p.SessionId == 0 ? "Servicio" : "Usuario";
+                        list.Add(new ProcessItem(p.Id, p.ProcessName, mb, cat));
+                    }
+                    catch { }
                 }
-                catch { }
             }
             return list.OrderByDescending(x => x.RamMb).Take(count).ToList();
         }

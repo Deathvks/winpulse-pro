@@ -17,7 +17,7 @@ public static partial class OptimizerEngine
 {
     internal static TweakState DefaultProfileAdjustments(UsageProfile profile) => profile switch
     {
-        UsageProfile.GamingMax => new(true, true, true, true, true, true, true, true, true, true, true, true),
+        UsageProfile.GamingMax => new(true, true, true, false, true, true, true, true, true, true, true, true),
         UsageProfile.StudyWork => new(true, true, true, false, true, false, true, false, false, true, true, false),
         UsageProfile.ChillBattery => new(true, true, true, false, true, false, false, false, false, false, false, true),
         UsageProfile.FactoryDefault => new(true, true, true, false, false, false, false, false, false, false, false, false),
@@ -55,7 +55,7 @@ public static partial class OptimizerEngine
             "SwHighResTimer" => IsRegistryDwordEqual(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "Session Manager", "kernel"), "GlobalTimerResolutionRequests", enabled ? 1 : 0),
             "SwGameDvr" => IsGameDvrInState(enabled),
             "SwMmcss" => IsMmcssInState(enabled),
-            "SwForegroundPrio" => IsRegistryDwordEqual(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", enabled ? 26 : 2),
+            "SwForegroundPrio" => IsRegistryDwordEqual(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", enabled ? 38 : 2),
             "SwBgApps" => IsRegistryDwordEqual(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "BackgroundAccessApplications"), "GlobalUserDisabled", enabled ? 1 : 0),
             "SwFastUi" => IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Desktop"), "MenuShowDelay", enabled ? "20" : "400") &&
                 IsRegistryStringEqual(Registry.CurrentUser, P("Control Panel", "Desktop", "WindowMetrics"), "MinAnimate", enabled ? "0" : "1"),
@@ -191,7 +191,7 @@ public static partial class OptimizerEngine
             differences.Add("Game DVR");
         if (!IsMmcssInState(values.MmcssGaming))
             differences.Add("Prioridad MMCSS");
-        if (!IsRegistryDwordEqual(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", values.ForegroundPriority ? 26 : 2))
+        if (!IsRegistryDwordEqual(Registry.LocalMachine, P("SYSTEM", "CurrentControlSet", "Control", "PriorityControl"), "Win32PrioritySeparation", values.ForegroundPriority ? 38 : 2))
             differences.Add("Prioridad de ventana activa");
         if (!IsRegistryDwordEqual(Registry.CurrentUser, P("Software", "Microsoft", "Windows", "CurrentVersion", "BackgroundAccessApplications"), "GlobalUserDisabled", values.LimitBackgroundApps ? 1 : 0))
             differences.Add("Apps en segundo plano");

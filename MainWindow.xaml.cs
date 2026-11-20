@@ -56,6 +56,7 @@ namespace WinPulseOptimizer
         private HistoryEntry? _latestProfileReport;
         private SettingStatusWindow? _settingStatusWindow;
         private bool _readingLiveMetrics;
+        private bool _refreshingTopProcesses;
         private long _nextGpuReadingAt;
         private long _lastLiveSampleOrder;
         private string? _lastNvidiaName;
@@ -856,6 +857,8 @@ namespace WinPulseOptimizer
             if (_systemChangeInProgress) return;
             UpdatePowerLineState();
             _ = CheckAdaptiveMemoryAsync();
+            if (IsVisible && WindowState != WindowState.Minimized && ReferenceEquals(MainTabs.SelectedItem, TabProcesses))
+                _ = RefreshTopProcessesAsync();
             await ReconcileAutomationAsync();
         }
 
@@ -938,6 +941,18 @@ namespace WinPulseOptimizer
         }
 
         private void RefreshTopProcesses() => LstTopProcesses.ItemsSource = HardwareMonitor.GetTopMemoryProcesses(12);
+
+        private async Task RefreshTopProcessesAsync()
+        {
+            if (_refreshingTopProcesses || _forceExit) return;
+            _refreshingTopProcesses = true;
+            try
+            {
+                var processes = await Task.Run(() => HardwareMonitor.GetTopMemoryProcesses(12));
+                if (!_forceExit) LstTopProcesses.ItemsSource = processes;
+            }
+            finally { _refreshingTopProcesses = false; }
+        }
         private void RefreshStartupApps() => LstStartupApps.ItemsSource = OptimizerEngine.GetStartupApps();
 
         private void BtnRefreshStartup_Click(object sender, RoutedEventArgs e)
@@ -1289,7 +1304,7 @@ namespace WinPulseOptimizer
         }
 
         private static string DescribeMemoryTrimProcesses(MemoryTrimResult result) =>
-            $"Procesos con ajuste confirmado: {result.Adjusted} · Omitidos: {result.Skipped}. La RAM puede volver a subir con el uso.";
+            $"Procesos con ajuste confirmado: {result.Adjusted} · Omitidos: {result.Skipped}. Las apps activas recargan su caché al usarlas; cierra las innecesarias para liberar más RAM.";
 
         private async void BtnReset_Click(object sender, RoutedEventArgs e) =>
             await ApplyFactoryProfileAsync("Aplicaste los valores predefinidos de WinPulse",

@@ -22,13 +22,17 @@ internal static partial class ProcessResourceMonitor
     private static readonly object SchedulingLock = new();
     private static BoostedGameEntry? _boostedGame;
     private static readonly Dictionary<int, ThrottledAppEntry> ThrottledApps = new();
+    private static long _nextBackgroundScanAt;
 
     private static readonly HashSet<string> RealtimeAppExclusions = new(StringComparer.OrdinalIgnoreCase)
     {
         "obs64", "obs32", "streamlabs obs", "discord", "discordptb", "discordcanary",
         "teamspeak", "ts3client_win64", "voicemeeter", "voicemeeterpro", "voicemeeter8",
         "nvidia broadcast", "nvcontainer", "steelseriesgg", "lghub", "icue", "razer synapse",
-        "audiodg", "WinPulseOptimizer"
+        "audiodg", "WinPulseOptimizer",
+        "steam", "steamwebhelper", "epicgameslauncher", "epicwebhelper",
+        "riotclientservices", "riotclientux", "battlenet", "eadesktop", "upc", "galaxyclient", "goggalaxy",
+        "msi.centralserver", "msi center", "msiafterburner", "rtss", "presentmon", "spotify"
     };
 
     private sealed record BoostedGameEntry(int Pid, string Name, long? CreationTime,
@@ -79,31 +83,8 @@ internal static partial class ProcessResourceMonitor
 
     private static BoostedGameEntry TryBoostGameProcess(RunningGame game)
     {
-        if (!game.CreationTime.HasValue)
-            return new(game.Pid, game.Name, game.CreationTime, null, false, false);
-
-        try
-        {
-            using var proc = Process.GetProcessById(game.Pid);
-            if (ReadRunningCreationTime(game.Pid) != game.CreationTime)
-                return new(game.Pid, game.Name, game.CreationTime, null, false, false);
-
-            var original = proc.PriorityClass;
-            if (original is ProcessPriorityClass.Normal or ProcessPriorityClass.BelowNormal)
-            {
-                proc.PriorityClass = ProcessPriorityClass.AboveNormal;
-                return new(game.Pid, game.Name, game.CreationTime, original, true, false);
-            }
-            return new(game.Pid, game.Name, game.CreationTime, null, false, false);
-        }
-        catch (Exception ex) when (ex is Win32Exception or UnauthorizedAccessException)
-        {
-            return new(game.Pid, game.Name, game.CreationTime, null, false, true);
-        }
-        catch
-        {
-            return new(game.Pid, game.Name, game.CreationTime, null, false, false);
-        }
+        // Mantener prioridad Normal evita que el juego desplace al compositor DWM, audio, red o hilos del driver GPU.
+        return new(game.Pid, game.Name, game.CreationTime, null, false, false);
     }
 
     private static void ReconcileThrottledAppsLocked(string activeGameName, IReadOnlySet<string> excludedGames)
@@ -118,6 +99,10 @@ internal static partial class ProcessResourceMonitor
                 ThrottledApps.Remove(pid);
             }
         }
+
+        long now = Environment.TickCount64;
+        if (now < _nextBackgroundScanAt) return;
+        _nextBackgroundScanAt = now + 15_000;
 
         using var current = Process.GetCurrentProcess();
         int session = current.SessionId;
@@ -193,6 +178,7 @@ internal static partial class ProcessResourceMonitor
         foreach (var entry in ThrottledApps.Values)
             RestoreBackgroundApp(entry);
         ThrottledApps.Clear();
+        _nextBackgroundScanAt = 0;
     }
 
     private static void RestoreBackgroundApp(ThrottledAppEntry entry)
