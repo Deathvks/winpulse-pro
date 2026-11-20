@@ -1,7 +1,7 @@
 <Window x:Class="WinPulseOptimizer.InstallationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Icon="Assets/WinPulse.ico" Width="465" SizeToContent="Height"
+        Icon="/WinPulseOptimizer;component/Assets/WinPulse.ico" Width="465" SizeToContent="Height"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource TextBrush}"
         FontFamily="{DynamicResource DisplayFont}" FontSize="14">

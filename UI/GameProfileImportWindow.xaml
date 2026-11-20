@@ -1,7 +1,7 @@
 <Window x:Class="WinPulseOptimizer.GameProfileImportWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Importar perfiles por juego" Icon="Assets/WinPulse.ico" Width="720" Height="450" MinWidth="520" MinHeight="350"
+        Title="Importar perfiles por juego" Icon="/WinPulseOptimizer;component/Assets/WinPulse.ico" Width="720" Height="450" MinWidth="520" MinHeight="350"
         ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI">
     <Window.Resources>

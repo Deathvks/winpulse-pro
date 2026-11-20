@@ -72,6 +72,11 @@ jobs:
         with:
           dotnet-version: '10.0.404'
 
+      - name: Ejecutar pruebas unitarias
+        if: steps.check.outputs.publish == 'true'
+        shell: pwsh
+        run: dotnet test Tests/WinPulseOptimizer.Tests.csproj -c Release
+
       - name: Compilar instalador
         if: steps.check.outputs.publish == 'true'
         shell: pwsh

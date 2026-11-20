@@ -1,7 +1,7 @@
 <Window x:Class="WinPulseOptimizer.UpdateAvailableWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Nueva versión de WinPulse Pro" Icon="Assets/WinPulse.ico" Width="455" SizeToContent="Height"
+        Title="Nueva versión de WinPulse Pro" Icon="/WinPulseOptimizer;component/Assets/WinPulse.ico" Width="455" SizeToContent="Height"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource TextBrush}"
         FontFamily="{DynamicResource DisplayFont}" FontSize="14">
