@@ -22,6 +22,14 @@ namespace WinPulseOptimizer
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern uint RegisterWindowMessage(string lpString);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+
+        private readonly uint _taskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
+
         private record TweakMeta(string Title, string PlainDesc, string SectionName, int TabIndex, string RowName);
 
         private static readonly Dictionary<string, TweakMeta> TweakInfoMap = new()
@@ -72,7 +80,11 @@ namespace WinPulseOptimizer
             var version = typeof(MainWindow).Assembly.GetName().Version;
             Title = $"WinPulse Pro {version?.ToString(3)}";
             InitializeUpdateButton(version);
-            SourceInitialized += (_, _) => ApplyDarkTitleBar();
+            SourceInitialized += (_, _) =>
+            {
+                ApplyDarkTitleBar();
+                RegisterTaskbarHook();
+            };
             SetupSystemTray();
 
             CardProfiles.IsEnabled = MainTabs.IsEnabled = false;
@@ -93,7 +105,10 @@ namespace WinPulseOptimizer
         {
             Loaded -= MainWindow_Loaded;
             if (Environment.GetCommandLineArgs().Any(a => a.Equals("--minimized", StringComparison.OrdinalIgnoreCase)))
+            {
                 HideToTray(false);
+                _ = EnsureTrayIconAfterExplorerAsync();
+            }
 
             await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.Background);
             if (_forceExit) return;
@@ -259,9 +274,48 @@ namespace WinPulseOptimizer
 
         internal void RestoreFromTray()
         {
-            Show();
+            RefreshTrayIcon();
+            if (!IsVisible) Show();
             if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            bool wasTopmost = Topmost;
+            Topmost = true;
+            Topmost = wasTopmost;
             Activate();
+        }
+
+        private void RefreshTrayIcon()
+        {
+            if (_trayIcon == null || _forceExit) return;
+            _trayIcon.Visible = false;
+            _trayIcon.Visible = true;
+        }
+
+        private void RegisterTaskbarHook()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            HwndSource.FromHwnd(hwnd)?.AddHook(WindowHook);
+        }
+
+        private IntPtr WindowHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (_taskbarCreatedMessage != 0 && (uint)msg == _taskbarCreatedMessage)
+                RefreshTrayIcon();
+            return IntPtr.Zero;
+        }
+
+        private async Task EnsureTrayIconAfterExplorerAsync()
+        {
+            // Al iniciar sesión justo antes que explorer.exe, re-registrar el icono en cuanto exista la barra de tareas.
+            for (int i = 0; i < 30 && !_forceExit; i++)
+            {
+                if (FindWindow("Shell_TrayWnd", null) != IntPtr.Zero)
+                {
+                    await Task.Delay(1000);
+                    if (!_forceExit) RefreshTrayIcon();
+                    return;
+                }
+                await Task.Delay(500);
+            }
         }
 
         internal bool PrepareForUpgrade()

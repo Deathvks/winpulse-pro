@@ -112,10 +112,20 @@ public partial class App : Application
             if (_instance == null)
             {
                 if (!minimized && await InstanceCoordinator.SendAsync(InstanceRequest.Activate) == InstanceReply.Unavailable)
-                    Report("WinPulse ya está abierto. Puedes abrir su ventana desde el icono junto al reloj.",
-                        silent: false, MessageBoxImage.Information);
-                Shutdown();
-                return;
+                {
+                    if (TryRecoverHungInstance())
+                        _instance = InstanceCoordinator.TryAcquire();
+                    if (_instance == null)
+                    {
+                        Report("WinPulse ya está abierto. Si no ves el icono junto al reloj, revisa la flecha (^) de iconos ocultos.",
+                            silent: false, MessageBoxImage.Information);
+                    }
+                }
+                if (_instance == null)
+                {
+                    Shutdown();
+                    return;
+                }
             }
 
             _instance.Listen(
@@ -179,6 +189,40 @@ public partial class App : Application
 
         window.RestoreFromTray();
         return InstanceReply.Accepted;
+    }
+
+    private static bool TryRecoverHungInstance()
+    {
+        if (MessageBox.Show(
+                "WinPulse ya tiene una instancia en segundo plano que no responde para mostrar su ventana.\n\n¿Quieres reiniciarla ahora para abrir WinPulse?",
+                "WinPulse Pro", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes)
+            != MessageBoxResult.Yes)
+            return false;
+
+        try
+        {
+            using var current = System.Diagnostics.Process.GetCurrentProcess();
+            int sessionId = current.SessionId;
+            string? exe = Environment.ProcessPath;
+            foreach (var proc in System.Diagnostics.Process.GetProcessesByName(current.ProcessName))
+            {
+                using (proc)
+                {
+                    if (proc.Id == current.Id || proc.SessionId != sessionId) continue;
+                    try
+                    {
+                        if (exe != null && proc.MainModule?.FileName is { } path &&
+                            !string.Equals(path, exe, StringComparison.OrdinalIgnoreCase))
+                            continue;
+                    }
+                    catch { }
+                    proc.Kill();
+                    proc.WaitForExit(3000);
+                }
+            }
+            return true;
+        }
+        catch { return false; }
     }
 
     private static void Report(string message, bool silent, MessageBoxImage icon)

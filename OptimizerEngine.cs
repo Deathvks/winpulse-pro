@@ -483,17 +483,21 @@ namespace WinPulseOptimizer
                     throw 'La tarea de inicio tiene una acción distinta de la que configura WinPulse.'
                 }
                 $settings = $task.Settings
+                $logonTrigger = @($task.Triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskLogonTrigger' }) | Select-Object -First 1
+                $delayOk = $null -ne $logonTrigger -and $logonTrigger.Delay -eq 'PT5S'
                 $settingsOk = (-not $settings.DisallowStartIfOnBatteries) -and (-not $settings.StopIfGoingOnBatteries) -and
                     ($settings.ExecutionTimeLimit -eq 'PT0S') -and [bool]$settings.StartWhenAvailable
-                if ($actions[0].Execute -eq $target -and $task.Principal.RunLevel -eq 'Limited' -and $settingsOk) { return }
+                if ($actions[0].Execute -eq $target -and $task.Principal.RunLevel -eq 'Limited' -and $settingsOk -and $delayOk) { return }
 
                 $enabled = [bool]$task.Settings.Enabled
                 $action = New-ScheduledTaskAction -Execute $target -Argument '--minimized' -WorkingDirectory (Split-Path -LiteralPath $target)
+                $trigger = New-ScheduledTaskTrigger -AtLogOn -User ($task.Principal.UserId)
+                $trigger.Delay = 'PT5S'
                 $principal = $task.Principal
                 $principal.RunLevel = 'Limited'
                 $newSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
                     -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -StartWhenAvailable
-                Set-ScheduledTask -TaskName '{{AutoStartTask}}' -TaskPath '\' -Action $action -Principal $principal -Settings $newSettings | Out-Null
+                Set-ScheduledTask -TaskName '{{AutoStartTask}}' -TaskPath '\' -Action $action -Trigger $trigger -Principal $principal -Settings $newSettings | Out-Null
                 $updated = Get-ScheduledTask -TaskName '{{AutoStartTask}}' -TaskPath '\'
                 if ([bool]$updated.Settings.Enabled -ne $enabled) {
                     if ($enabled) { Enable-ScheduledTask -InputObject $updated | Out-Null }
@@ -570,6 +574,7 @@ namespace WinPulseOptimizer
                     $user = '{{user}}'
                     $action = New-ScheduledTaskAction -Execute $target -Argument '--minimized' -WorkingDirectory (Split-Path -LiteralPath $target)
                     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+                    $trigger.Delay = 'PT5S'
                     $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
                     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
                         -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -StartWhenAvailable
