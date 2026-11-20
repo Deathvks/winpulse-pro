@@ -609,6 +609,9 @@ namespace WinPulseOptimizer
                     BtnApplyPlanRecommendation.Content = missing.Count == 2 ? "Aplicar extras gamer" : "Aplicar extra pendiente";
                     BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
                 }
+
+                BtnRevertPlanRecommendation.Content = "Revertir extras";
+                BtnRevertPlanRecommendation.Visibility = (mouse || transp) ? Visibility.Visible : Visibility.Collapsed;
                 return;
             }
 
@@ -621,15 +624,28 @@ namespace WinPulseOptimizer
 
                 if (missing.Count == 0)
                 {
-                    TxtPlanRecommendationBody.Text = "Ya tienes activos la apertura instantánea y el ajuste adaptativo de RAM para multitarea fluida.";
+                    TxtPlanRecommendationBody.Text = transp
+                        ? "Ya tienes apertura instantánea y RAM adaptativa activas. Las transparencias de Windows están desactivadas; puedes reactivarlas con un clic."
+                        : "Ya tienes activos la apertura instantánea y el ajuste adaptativo de RAM para multitarea fluida.";
                     BtnApplyPlanRecommendation.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
-                    TxtPlanRecommendationBody.Text = $"Para moverte más rápido entre apps sin cerrar programas: activar {string.Join(" y ", missing)} (sin UAC).";
+                    string extraNote = transp ? " Además puedes reactivar las transparencias de Windows." : "";
+                    TxtPlanRecommendationBody.Text = $"Para moverte más rápido entre apps sin cerrar programas: activar {string.Join(" y ", missing)} (sin UAC).{extraNote}";
                     BtnApplyPlanRecommendation.Content = "Aplicar para Estudiar";
                     BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
                 }
+
+                if (fastUi || adaptive || transp)
+                {
+                    BtnRevertPlanRecommendation.Content = !fastUi && !adaptive && transp
+                        ? "Activar transparencias"
+                        : transp ? "Revertir extras y transparencias" : "Revertir extras";
+                    BtnRevertPlanRecommendation.Visibility = Visibility.Visible;
+                }
+                else
+                    BtnRevertPlanRecommendation.Visibility = Visibility.Collapsed;
                 return;
             }
 
@@ -653,12 +669,23 @@ namespace WinPulseOptimizer
                     BtnApplyPlanRecommendation.Content = _hasBattery == false ? "Aplicar modo Chill" : "Aplicar ahorro Chill";
                     BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
                 }
+
+                BtnRevertPlanRecommendation.Content = "Revertir extras";
+                BtnRevertPlanRecommendation.Visibility = (transp || adaptive) ? Visibility.Visible : Visibility.Collapsed;
                 return;
             }
 
-            TxtPlanRecommendationKicker.Text = "RECOMENDADO PARA TU PLAN ELEGIDO";
-            TxtPlanRecommendationBody.Text = "Elige Jugar, Estudiar / Trabajar o Estar Chill arriba para ver los extras recomendados para cada escenario.";
-            BtnApplyPlanRecommendation.Visibility = Visibility.Collapsed;
+            bool isDesktop = _hasBattery == false;
+            TxtPlanRecommendationKicker.Text = isDesktop
+                ? "EQUIPO DETECTADO · PC DE SOBREMESA"
+                : "EQUIPO DETECTADO · PORTÁTIL";
+            TxtPlanRecommendationBody.Text = isDesktop
+                ? "Detectamos un PC de sobremesa: te recomendamos empezar con «Estudiar / Trabajar» para uso diario y dejar activa la detección automática para pasar a «Jugar» al abrir un juego."
+                : "Detectamos un portátil: te recomendamos empezar con «Estudiar / Trabajar» con gestión enchufado/batería y detección automática al abrir juegos.";
+            BtnApplyPlanRecommendation.Content = isDesktop ? "Empezar optimizado (Sobremesa)" : "Empezar optimizado (Portátil)";
+            BtnApplyPlanRecommendation.Visibility = Visibility.Visible;
+            BtnRevertPlanRecommendation.Content = "Revertir extras";
+            BtnRevertPlanRecommendation.Visibility = (fastUi || mouse || transp || adaptive) ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void BtnApplyPlanRecommendation_Click(object sender, RoutedEventArgs e)
@@ -667,54 +694,98 @@ namespace WinPulseOptimizer
 
             if (_activeProfileTag == "JUGAR" || _activeProfileTag.StartsWith("GAME:", StringComparison.Ordinal))
             {
-                if (SwMouseAccel.IsChecked != true)
-                {
-                    var m = TweakInfoMap["SwMouseAccel"];
-                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
-                        new(SystemAction.Tweak, "SwMouseAccel", true), null);
-                }
-                if (SwTransparency.IsChecked != true)
-                {
-                    var m = TweakInfoMap["SwTransparency"];
-                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
-                        new(SystemAction.Tweak, "SwTransparency", true), null);
-                }
+                if (SwMouseAccel.IsChecked != true) await ApplyRecommendedTweakAsync("SwMouseAccel", true);
+                if (SwTransparency.IsChecked != true) await ApplyRecommendedTweakAsync("SwTransparency", true);
             }
             else if (_activeProfileTag == "ESTUDIAR")
             {
-                if (SwFastUi.IsChecked != true)
-                {
-                    var m = TweakInfoMap["SwFastUi"];
-                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
-                        new(SystemAction.Tweak, "SwFastUi", true), null);
-                }
-                if (SwAdaptiveMemory.IsChecked != true)
-                    EnableRecommendedAdaptiveMemory();
+                if (SwFastUi.IsChecked != true) await ApplyRecommendedTweakAsync("SwFastUi", true);
+                if (SwAdaptiveMemory.IsChecked != true) SetRecommendedAdaptiveMemory(true);
             }
             else if (_activeProfileTag == "CHILL")
             {
-                if (SwTransparency.IsChecked != true)
+                if (SwTransparency.IsChecked != true) await ApplyRecommendedTweakAsync("SwTransparency", true);
+                if (SwAdaptiveMemory.IsChecked != true) SetRecommendedAdaptiveMemory(true);
+            }
+            else
+            {
+                if (await ApplyStudyModeAsync("Inicio optimizado: Estudiar / Trabajar",
+                    "Detectó el tipo de equipo y aplicó el perfil recomendado de inicio."))
                 {
-                    var m = TweakInfoMap["SwTransparency"];
-                    await ApplySystemChangeAsync($"Activaste: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
-                        new(SystemAction.Tweak, "SwTransparency", true), null);
+                    EnableRecommendedAutomation();
                 }
-                if (SwAdaptiveMemory.IsChecked != true)
-                    EnableRecommendedAdaptiveMemory();
             }
 
             UpdatePlanRecommendationCard();
         }
 
-        private void EnableRecommendedAdaptiveMemory()
+        private async void BtnRevertPlanRecommendation_Click(object sender, RoutedEventArgs e)
+        {
+            if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
+
+            if (_activeProfileTag == "JUGAR" || _activeProfileTag.StartsWith("GAME:", StringComparison.Ordinal))
+            {
+                if (SwMouseAccel.IsChecked == true) await ApplyRecommendedTweakAsync("SwMouseAccel", false);
+                if (SwTransparency.IsChecked == true) await ApplyRecommendedTweakAsync("SwTransparency", false);
+            }
+            else if (_activeProfileTag == "ESTUDIAR")
+            {
+                if (SwFastUi.IsChecked == true) await ApplyRecommendedTweakAsync("SwFastUi", false);
+                if (SwAdaptiveMemory.IsChecked == true) SetRecommendedAdaptiveMemory(false);
+                if (SwTransparency.IsChecked == true) await ApplyRecommendedTweakAsync("SwTransparency", false);
+            }
+            else if (_activeProfileTag == "CHILL")
+            {
+                if (SwTransparency.IsChecked == true) await ApplyRecommendedTweakAsync("SwTransparency", false);
+                if (SwAdaptiveMemory.IsChecked == true) SetRecommendedAdaptiveMemory(false);
+            }
+            else
+            {
+                if (SwFastUi.IsChecked == true) await ApplyRecommendedTweakAsync("SwFastUi", false);
+                if (SwMouseAccel.IsChecked == true) await ApplyRecommendedTweakAsync("SwMouseAccel", false);
+                if (SwTransparency.IsChecked == true) await ApplyRecommendedTweakAsync("SwTransparency", false);
+                if (SwAdaptiveMemory.IsChecked == true) SetRecommendedAdaptiveMemory(false);
+            }
+
+            UpdatePlanRecommendationCard();
+        }
+
+        private async Task ApplyRecommendedTweakAsync(string tweakName, bool enable)
+        {
+            var m = TweakInfoMap[tweakName];
+            string verb = enable ? "Activaste" : "Desactivaste";
+            await ApplySystemChangeAsync($"{verb}: {m.Title}", m.PlainDesc, m.SectionName, m.TabIndex, m.RowName,
+                new(SystemAction.Tweak, tweakName, enable), null);
+        }
+
+        private void SetRecommendedAdaptiveMemory(bool enable)
         {
             var store = HistoryManager.Load();
-            store.AdaptiveMemoryAutomatic = true;
+            store.AdaptiveMemoryAutomatic = enable;
             if (HistoryManager.Save(store))
             {
                 LoadAdaptiveMemorySettings(store);
-                Log("Optimización adaptativa de memoria activada como ajuste recomendado del plan.");
+                Log(enable
+                    ? "Optimización adaptativa de memoria activada como ajuste recomendado del plan."
+                    : "Optimización adaptativa de memoria desactivada al revertir recomendaciones.");
             }
+        }
+
+        private void EnableRecommendedAutomation()
+        {
+            var store = HistoryManager.Load();
+            store.AutoGameSwitch = true;
+            if (_hasBattery != false) store.AutoBatteryChill = true;
+            if (!HistoryManager.Save(store)) return;
+
+            _loading = true;
+            SwAutoGame.IsChecked = store.AutoGameSwitch;
+            SwAutoBattery.IsChecked = store.AutoBatteryChill;
+            _loading = false;
+            ResetAutomationOverride();
+            bool batteryAutomation = _hasBattery != false && store.AutoBatteryChill;
+            TxtAutoStatus.Text = (store.AutoGameSwitch || batteryAutomation) ? "Vigilante activo" : "Vigilante pausado";
+            Log("Detección automática activada junto con el inicio optimizado.");
         }
 
         private void BtnToggleProfileGuide_Click(object sender, RoutedEventArgs e)

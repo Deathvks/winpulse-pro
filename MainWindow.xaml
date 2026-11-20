@@ -167,9 +167,15 @@
                         <!-- Recomendado para el plan elegido -->
                         <Border x:Name="CardPlanRecommendation" Style="{StaticResource SectionCard}" Padding="20,14" Margin="0,0,0,18">
                             <DockPanel LastChildFill="True">
-                                <Button x:Name="BtnApplyPlanRecommendation" DockPanel.Dock="Right" Content="Aplicar recomendados"
-                                        Style="{StaticResource SecondaryBtn}" VerticalAlignment="Center" Margin="16,0,0,0"
-                                        Click="BtnApplyPlanRecommendation_Click"/>
+                                <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="16,0,0,0">
+                                    <Button x:Name="BtnRevertPlanRecommendation" Content="Revertir extras"
+                                            Style="{StaticResource SecondaryBtn}" Padding="12,6" Margin="0,2,8,2"
+                                            Visibility="Collapsed" Click="BtnRevertPlanRecommendation_Click"
+                                            ToolTip="Revierte las recomendaciones aplicadas de este plan (por ejemplo, vuelve a activar las transparencias de Windows)."/>
+                                    <Button x:Name="BtnApplyPlanRecommendation" Content="Aplicar recomendados"
+                                            Style="{StaticResource SecondaryBtn}" Margin="0,2,0,2"
+                                            Click="BtnApplyPlanRecommendation_Click"/>
+                                </WrapPanel>
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock x:Name="TxtPlanRecommendationKicker" Text="RECOMENDADO PARA TU PLAN ELEGIDO"
                                                Style="{StaticResource SectionKicker}" Margin="0,0,0,4"/>
