@@ -162,22 +162,25 @@
                                 <Border Grid.Column="0" Width="3" CornerRadius="2" Background="{DynamicResource AccentBrush}" Margin="0,2,16,2"/>
                                 <DockPanel Grid.Column="1" LastChildFill="True">
                                     <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="16,0,0,0">
+                                        <Button x:Name="BtnQuickCloseApps" Content="Cerrar apps abiertas" Style="{StaticResource PrimaryBtn}"
+                                                Padding="13,7" Margin="0,2,8,2" Click="BtnCloseApps_Click"
+                                                ToolTip="Elige qué programas abiertos cerrar para liberar RAM real sin borrar cachés de shaders ni tocar juegos."/>
                                         <Button x:Name="BtnQuickTrimRam" Content="Solo liberar RAM" Style="{StaticResource SecondaryBtn}"
                                                 Padding="13,7" Margin="0,2,8,2" Click="BtnPurgeRam_Click"
-                                                ToolTip="Libera memoria residente de procesos en segundo plano al instante sin cerrar aplicaciones."/>
-                                        <Button x:Name="BtnQuickCleanAndRam" Content="Limpiar y liberar RAM" Style="{StaticResource PrimaryBtn}"
-                                                Padding="15,7" Margin="0,2,0,2" Click="BtnMaintenance_Click"
-                                                ToolTip="Borra temporales (%TEMP%, Windows\Temp y caché de shaders), vacía la caché DNS y libera memoria RAM."/>
+                                                ToolTip="Libera memoria residente de procesos en segundo plano al instante sin cerrar aplicaciones (útil solo si la RAM está muy llena)."/>
+                                        <Button x:Name="BtnQuickCleanAndRam" Content="Limpiar y liberar RAM" Style="{StaticResource SecondaryBtn}"
+                                                Padding="13,7" Margin="0,2,0,2" Click="BtnMaintenance_Click"
+                                                ToolTip="Mantenimiento puntual: borra temporales (%TEMP%, Windows\Temp y caché de shaders), vacía la caché DNS y libera memoria RAM."/>
                                     </WrapPanel>
                                     <StackPanel VerticalAlignment="Center">
                                         <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="RECOMENDADO AL ENTRAR" FontFamily="{DynamicResource MonoFont}" FontSize="10.5" FontWeight="Bold"
+                                            <TextBlock Text="MEMORIA Y LIMPIEZA" FontFamily="{DynamicResource MonoFont}" FontSize="10.5" FontWeight="Bold"
                                                        Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="· Libera RAM y limpia basura antes de empezar" FontSize="13.5" FontWeight="SemiBold"
+                                            <TextBlock Text="· Prepara RAM para jugar o haz limpieza puntual" FontSize="13.5" FontWeight="SemiBold"
                                                        Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                         </WrapPanel>
                                         <TextBlock x:Name="TxtQuickCleanupHint"
-                                                   Text="Reduce la memoria ocupada por procesos inactivos y borra temporales (%TEMP%, Windows\Temp, D3DSCache y caché NVIDIA/AMD) sin cerrar tus apps."
+                                                   Text="Antes de jugar usa «Cerrar apps abiertas» (libera RAM real sin borrar cachés de shaders). Deja «Limpiar y liberar RAM» para mantenimiento puntual."
                                                    FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </DockPanel>

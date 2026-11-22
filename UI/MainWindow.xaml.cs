@@ -1422,6 +1422,67 @@ namespace WinPulseOptimizer
             UpdatePlanRecommendationCard();
         }
 
+        private async void BtnCloseApps_Click(object sender, RoutedEventArgs e)
+        {
+            if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;
+            SetSystemChangeBusy(true, "Buscando apps en segundo plano…");
+            List<CloseableAppGroup> candidates;
+            try
+            {
+                var excluded = _excludedBackgroundApps
+                    .Concat(_includedGames)
+                    .Concat(_gameProfiles.SelectMany(profile => profile.Executables))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                string? activeGame = _detectedGame;
+                candidates = await Task.Run(() => ProcessResourceMonitor.FindCloseableApps(excluded, activeGame));
+            }
+            catch (Exception ex)
+            {
+                SetSystemChangeBusy(false);
+                Log($"No se pudieron listar las apps cerrables. {ex.Message}");
+                return;
+            }
+            SetSystemChangeBusy(false);
+
+            if (candidates.Count == 0)
+            {
+                ShowChangeCard("SIN APPS PARA CERRAR", "No hay apps pesadas en 2.º plano que cerrar",
+                    "WinPulse protegió juegos, audio, drivers, sistema y tus exclusiones.");
+                TxtQuickCleanupHint.Text = "No hay aplicaciones pesadas abiertas para cerrar en este momento.";
+                TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+                return;
+            }
+
+            var dialog = new CloseAppsWindow(candidates) { Owner = this };
+            if (dialog.ShowDialog() != true || dialog.SelectedGroups.Count == 0) return;
+
+            SetSystemChangeBusy(true, "Cerrando apps seleccionadas…");
+            ShowChangeCard("CERRANDO APPS EN CURSO", "Cerrando los programas elegidos…",
+                "Sin borrar cachés de shaders ni tocar juegos ni servicios.");
+            try
+            {
+                var result = await Task.Run(() => ProcessResourceMonitor.CloseAppGroupsAsync(dialog.SelectedGroups));
+                string measurement = DescribeMemoryTrim(
+                    new MemoryTrimResult(result.ClosedProcesses, result.RemainingProcesses, result.BeforeBytes, result.AfterBytes));
+                string details = $"Apps cerradas: {result.ClosedApps}/{dialog.SelectedGroups.Count} ({result.ClosedProcesses} procesos). Cachés de shaders intactas.";
+                if (result.RemainingProcesses > 0)
+                    details += $" {result.RemainingProcesses} proceso(s) siguieron abiertos (p. ej. guardando cambios).";
+                ShowChangeCard("RAM TRAS CERRAR APPS", measurement, details);
+                TxtQuickCleanupHint.Text = $"Último cierre de apps: {measurement.Replace(Environment.NewLine, " · ")}";
+                TxtQuickCleanupHint.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+                RecordAction("Cerraste apps para liberar RAM", details, "Pestaña 0: Inicio y energía", 0,
+                    "RowMaintenance", measurement);
+                Log($"{measurement.Replace(Environment.NewLine, ". ")}. {details}");
+                RefreshTopProcesses();
+            }
+            catch (Exception ex)
+            {
+                ShowChangeCard("CIERRE DE APPS", "No se pudieron cerrar todas las apps", "Consulta el registro.");
+                Log($"Error al cerrar aplicaciones: {ex.Message}");
+            }
+            finally { SetSystemChangeBusy(false); }
+        }
+
         private async void BtnPurgeRam_Click(object sender, RoutedEventArgs e)
         {
             if (_startingUp || _systemChangeInProgress || _benchmarkCancellation != null) return;

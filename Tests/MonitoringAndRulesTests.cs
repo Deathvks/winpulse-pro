@@ -52,6 +52,13 @@ public class MonitoringAndRulesTests
         Assert.False(ProcessResourceMonitor.IsEligibleAppPath(@"C:\Windows\System32\notepad.exe"));
         Assert.False(ProcessResourceMonitor.IsEligibleAppPath(@"C:\Program Files\WindowsApps\App\app.exe"));
         Assert.True(ProcessResourceMonitor.IsEligibleAppPath(@"C:\Program Files\App\app.exe"));
+
+        var empty = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        Assert.True(ProcessResourceMonitor.IsCloseableAppCandidate("chrome", @"C:\Program Files\Google\Chrome\Application\chrome.exe", empty, "Code", "cs2"));
+        Assert.False(ProcessResourceMonitor.IsCloseableAppCandidate("discord", @"C:\Users\dylan\AppData\Local\Discord\Discord.exe", empty, "Code", "cs2"));
+        Assert.False(ProcessResourceMonitor.IsCloseableAppCandidate("cs2", @"D:\Steam\steamapps\common\Counter-Strike Global Offensive\game\bin\win64\cs2.exe", empty, "Code", "cs2"));
+        Assert.False(ProcessResourceMonitor.IsCloseableAppCandidate("Code", @"C:\Program Files\Microsoft VS Code\Code.exe", empty, "Code", "cs2"));
+        Assert.False(ProcessResourceMonitor.IsCloseableAppCandidate("obs64", @"C:\Program Files\obs-studio\bin\64bit\obs64.exe", empty, "Code", "cs2"));
     }
 
     [Fact]
