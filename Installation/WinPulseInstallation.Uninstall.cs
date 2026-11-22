@@ -98,6 +98,7 @@ namespace WinPulseOptimizer
             DeleteInstalledExecutable();
             OptimizerEngine.RemoveInstalledAutoStart(InstalledExecutable);
             RemoveStartMenuShortcut();
+            CleanupStaleTrayIconEntries(removeAll: true);
             using var root = OpenRegistrationRoot();
             root.DeleteSubKey(RegistrationPath, throwOnMissingSubKey: false);
 

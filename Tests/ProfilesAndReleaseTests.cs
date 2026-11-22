@@ -70,4 +70,18 @@ public class ProfilesAndReleaseTests
             if (File.Exists(tempFile)) File.Delete(tempFile);
         }
     }
+
+    [Fact]
+    public void IsStaleTraySettingsEntry_PrunesOnlyOldWinPulseCopies()
+    {
+        const string installed = @"C:\Program Files\WinPulse Pro\WinPulseOptimizer.exe";
+        const string knownFolder = @"{6D809377-6AF0-444B-8957-A3773F02200E}\WinPulse Pro\WinPulseOptimizer.exe";
+
+        Assert.False(WinPulseInstallation.IsStaleTraySettingsEntry(knownFolder, installed, installed));
+        Assert.False(WinPulseInstallation.IsStaleTraySettingsEntry(installed, installed, installed));
+        Assert.False(WinPulseInstallation.IsStaleTraySettingsEntry(@"C:\Windows\System32\notepad.exe", installed, installed));
+        Assert.True(WinPulseInstallation.IsStaleTraySettingsEntry(
+            @"C:\proyectos\optimizador\WinPulseOptimizer\bin\WinPulsePro-1.1.6\WinPulseOptimizer.exe",
+            installed, installed));
+    }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace WinPulseOptimizer
 {
@@ -204,6 +205,53 @@ namespace WinPulseOptimizer
             };
             if (minimized) start.ArgumentList.Add("--minimized");
             using var process = Process.Start(start) ?? throw new IOException("No se pudo abrir WinPulse instalado.");
+        }
+
+        private const string NotifyIconSettingsPath = @"Control Panel\NotifyIconSettings";
+        private static readonly string InstalledKnownFolderExecutable =
+            $@"{Guid.Parse("6D809377-6AF0-444B-8957-A3773F02200E"):B}\{ProductName}\{ExecutableName}";
+
+        internal static void CleanupStaleTrayIconEntries(bool removeAll = false)
+        {
+            try
+            {
+                using var root = Registry.CurrentUser.OpenSubKey(NotifyIconSettingsPath, writable: true);
+                if (root == null) return;
+                string? currentExe = Environment.ProcessPath;
+                foreach (string subKeyName in root.GetSubKeyNames())
+                {
+                    try
+                    {
+                        using var subKey = root.OpenSubKey(subKeyName);
+                        string? exePath = subKey?.GetValue("ExecutablePath") as string;
+                        if (removeAll
+                            ? string.Equals(Path.GetFileName(exePath), ExecutableName, StringComparison.OrdinalIgnoreCase)
+                            : IsStaleTraySettingsEntry(exePath, currentExe, InstalledExecutable))
+                        {
+                            root.DeleteSubKeyTree(subKeyName, throwOnMissingSubKey: false);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        internal static bool IsStaleTraySettingsEntry(string? entryPath, string? currentExePath, string installedExePath)
+        {
+            if (string.IsNullOrWhiteSpace(entryPath) ||
+                !string.Equals(Path.GetFileName(entryPath), ExecutableName, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (string.Equals(entryPath, InstalledKnownFolderExecutable, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(entryPath, installedExePath, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(currentExePath) &&
+                string.Equals(entryPath, currentExePath, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
         }
     }
 }

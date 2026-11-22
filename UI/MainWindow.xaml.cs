@@ -187,6 +187,7 @@ namespace WinPulseOptimizer
 
         private void SetupSystemTray()
         {
+            WinPulseInstallation.CleanupStaleTrayIconEntries();
             var iconResource = new Uri("/WinPulseOptimizer;component/Assets/WinPulse.ico", UriKind.Relative);
             using var stream = System.Windows.Application.GetResourceStream(iconResource).Stream;
             var frames = new IconBitmapDecoder(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames;
