@@ -566,7 +566,7 @@ namespace WinPulseOptimizer
                 RunCommand("schtasks.exe", $"/delete /tn {AutoStartTask} /f");
             else if (current == "Absent" && desired == "Enabled")
             {
-                string exePath = Environment.ProcessPath ?? throw new IOException("No se encontró el ejecutable de WinPulse.");
+                string exePath = StoreDistribution.ResolveAutoStartExecutablePath(Environment.ProcessPath);
                 string target = exePath.Replace("'", "''");
                 string user = $@"{Environment.UserDomainName}\{Environment.UserName}".Replace("'", "''");
                 RunPowerShell($$"""
@@ -584,7 +584,7 @@ namespace WinPulseOptimizer
             else if (current != "Absent" && desired is "Enabled" or "Disabled")
             {
                 if (desired == "Enabled")
-                    UpdateScheduledLaunchPath(Environment.ProcessPath ?? throw new IOException("No se encontró el ejecutable de WinPulse."));
+                    UpdateScheduledLaunchPath(StoreDistribution.ResolveAutoStartExecutablePath(Environment.ProcessPath));
                 RunCommand("schtasks.exe", $"/change /tn {AutoStartTask} /{(desired == "Enabled" ? "enable" : "disable")}");
             }
             else

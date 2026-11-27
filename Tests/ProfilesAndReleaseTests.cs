@@ -84,4 +84,34 @@ public class ProfilesAndReleaseTests
             @"C:\proyectos\optimizador\WinPulseOptimizer\bin\WinPulsePro-1.1.6\WinPulseOptimizer.exe",
             installed, installed));
     }
+
+    [Fact]
+    public void ResolveAutoStartExecutablePath_UsesAppExecutionAliasInStoreBuilds()
+    {
+        const string packageExe = @"C:\Program Files\WindowsApps\Deathvks.WinPulsePro_1.1.73.0_x64__abc\WinPulseOptimizer.exe";
+        const string localAppData = @"C:\Users\Demo\AppData\Local";
+        const string expectedAlias = @"C:\Users\Demo\AppData\Local\Microsoft\WindowsApps\WinPulseOptimizer.exe";
+
+        string resolvedStoreAlias = StoreDistribution.ResolveAutoStartExecutablePath(
+            packageExe, isStoreBuild: true, localAppData, path => string.Equals(path, expectedAlias, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(expectedAlias, resolvedStoreAlias);
+
+        string fallbackStorePath = StoreDistribution.ResolveAutoStartExecutablePath(
+            packageExe, isStoreBuild: true, localAppData, _ => false);
+        Assert.Equal(packageExe, fallbackStorePath);
+
+        string nonStorePath = StoreDistribution.ResolveAutoStartExecutablePath(
+            packageExe, isStoreBuild: false, localAppData, _ => true);
+        Assert.Equal(packageExe, nonStorePath);
+    }
+
+    [Fact]
+    public void ShouldStackDashboardMetrics_StacksOnlyWhenContentWidthIsNarrow()
+    {
+        Assert.False(MainWindow.ShouldStackDashboardMetrics(0));
+        Assert.True(MainWindow.ShouldStackDashboardMetrics(535));
+        Assert.True(MainWindow.ShouldStackDashboardMetrics(679));
+        Assert.False(MainWindow.ShouldStackDashboardMetrics(680));
+        Assert.False(MainWindow.ShouldStackDashboardMetrics(880));
+    }
 }

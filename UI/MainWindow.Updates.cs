@@ -26,12 +26,27 @@ public partial class MainWindow
     {
         if (BtnUpdateStatus == null) return;
         string current = version?.ToString(3) ?? "—";
+        if (StoreDistribution.IsStoreBuild)
+        {
+            BtnUpdateStatus.Content = $"v{current} · Microsoft Store";
+            BtnUpdateStatus.ToolTip = "Las actualizaciones de esta edición se gestionan automáticamente desde Microsoft Store.";
+            return;
+        }
         BtnUpdateStatus.Content = $"v{current} · Buscar actualización";
     }
 
     private void RenderUpdateButton(Version current, DateTimeOffset? checkedAtUtc = null)
     {
         if (BtnUpdateStatus == null) return;
+        if (StoreDistribution.IsStoreBuild)
+        {
+            var linkStyle = (Style)FindResource("LinkBtn");
+            if (!ReferenceEquals(BtnUpdateStatus.Style, linkStyle))
+                BtnUpdateStatus.Style = linkStyle;
+            BtnUpdateStatus.Content = $"v{current.ToString(3)} · Microsoft Store";
+            BtnUpdateStatus.ToolTip = "Las actualizaciones de esta edición se gestionan automáticamente desde Microsoft Store.";
+            return;
+        }
         if (_availableUpdate is { } available)
         {
             var primaryStyle = (Style)FindResource("PrimaryBtn");
@@ -58,6 +73,17 @@ public partial class MainWindow
     private async Task CheckForUpdateAsync(bool manual = false)
     {
         if (_loading || _startingUp || _forceExit || _checkingForUpdate) return;
+        if (StoreDistribution.IsStoreBuild)
+        {
+            if (manual)
+            {
+                Version storeVersion = typeof(MainWindow).Assembly.GetName().Version!;
+                System.Windows.MessageBox.Show(this,
+                    $"Esta edición de WinPulse Pro (v{storeVersion.ToString(3)}) se actualiza automáticamente desde Microsoft Store.\n\nPara buscar actualizaciones ahora, abre Microsoft Store → Biblioteca.",
+                    "Microsoft Store", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            return;
+        }
         if (!manual)
         {
             if (!CanCheckForUpdate) return;

@@ -21,6 +21,37 @@ public partial class MainWindow
         if (e.WidthChanged && ActivityLogPanel?.Visibility == Visibility.Visible) UpdateActivityLogLayout();
     }
 
+    internal static bool ShouldStackDashboardMetrics(double width) => width > 0 && width < 680;
+
+    private void DashboardMetrics_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged) UpdateDashboardMetricsLayout();
+    }
+
+    private void UpdateDashboardMetricsLayout()
+    {
+        if (DashboardMetrics == null || CardMetricLive == null || CardMetricBefore == null || CardMetricAfter == null)
+            return;
+
+        bool stack = ShouldStackDashboardMetrics(DashboardMetrics.ActualWidth);
+        int targetCols = stack ? 1 : 3;
+        if (DashboardMetrics.Columns == targetCols && !stack) return;
+
+        DashboardMetrics.Columns = targetCols;
+        if (stack)
+        {
+            CardMetricLive.Margin = new Thickness(0, 0, 0, 10);
+            CardMetricBefore.Margin = new Thickness(0, 0, 0, 10);
+            CardMetricAfter.Margin = new Thickness(0);
+        }
+        else
+        {
+            CardMetricLive.Margin = new Thickness(0, 0, 7, 0);
+            CardMetricBefore.Margin = new Thickness(7, 0, 7, 0);
+            CardMetricAfter.Margin = new Thickness(7, 0, 0, 0);
+        }
+    }
+
     private void BtnToggleActivityLog_Click(object sender, RoutedEventArgs e) =>
         SetActivityLogOpen(ActivityLogPanel.Visibility != Visibility.Visible);
 

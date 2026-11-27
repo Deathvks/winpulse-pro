@@ -7,11 +7,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\WinPulse.ico</ApplicationIcon>
-    <Version>1.1.72</Version>
+    <Version>1.1.73</Version>
     <RuntimeFrameworkVersion>10.0.15</RuntimeFrameworkVersion>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;UsageServer\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;UsageServer\**;Store\Assets\**</DefaultItemExcludes>
     <AppHostDotNetSearch Condition="'$(PublishSingleFile)' == 'true'">Global</AppHostDotNetSearch>
     <DefineConstants Condition="'$(PublishSingleFile)' == 'true'">$(DefineConstants);WINPULSE_INSTALLER</DefineConstants>
+    <DefineConstants Condition="'$(WinPulseDistribution)' == 'Store'">$(DefineConstants);WINPULSE_STORE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="WinPulseOptimizer.Tests" />

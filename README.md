@@ -31,3 +31,4 @@ Descarga la última versión del instalador (`WinPulseSetup.exe`) desde la secci
 1. Sube `<Version>` en `WinPulseOptimizer.csproj` y haz `push` a `main`.
 2. El flujo **Publicar WinPulse** (`.github/workflows/release.yml`) compila el instalador ligero `WinPulseSetup.exe` y publica la release `vX.Y.Z` en este repositorio (`Deathvks/winpulse-pro`) usando `github.token`. Un `push` sin cambio de versión conserva la release existente.
 3. Para generar un instalador sin conexión localmente, pasa el instalador oficial de .NET Desktop Runtime x64 a `Installer/Build-Installer.ps1` mediante `-RuntimeInstaller` (verifica el SHA-256 y genera `WinPulseSetupOffline.exe`).
+4. Para empaquetar la edición **Microsoft Store (MSIX)**, ejecuta `Store/Build-Msix.ps1` (indica `-PackageName`, `-Publisher` y `-PublisherDisplayName` con los datos de identidad de Partner Center, o `-DevCert` para pruebas locales).
